@@ -1,0 +1,26 @@
+---
+title: "The Real Cost of Complexity"
+date: "2026-02-18"
+---
+
+# The Real Cost of Complexity
+
+Every abstraction has a price. Most engineers pay it without reading the invoice.
+
+## What We Mean When We Say "Scalable"
+
+"Scalable" has become a cargo cult word in engineering. Teams adopt microservices, event queues, and distributed caches at 200 daily users because they're planning for 200 million. They end up with a system that is expensive to run, slow to change, and incomprehensible to new joiners — before they've validated that anyone actually wants the product.
+
+Complexity is not a neutral engineering trade-off. It is a bet against your own future self.
+
+## The Reversibility Test
+
+Before adding any layer of abstraction, I ask one question: **how do I remove this?**
+
+If the answer is "you can't" or "it would take weeks," that is a red flag. The best architecture is one where each component can be swapped out independently without rewriting the system. This is not theoretical — I have been on both sides of this decision, and the projects where we respected reversibility are the ones still running cleanly two years later.
+
+## Simplicity as Craft
+
+A junior engineer writes code that works. A senior engineer writes code that the next person can understand at 2am during an incident. The gap between the two is not knowledge of patterns or frameworks. It is the discipline to stop adding things when the simple solution is already correct.
+
+The goal is not simple code. The goal is code whose complexity is justified by the problem it solves — and nothing else.

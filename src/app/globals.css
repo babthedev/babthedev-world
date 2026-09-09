@@ -12,8 +12,8 @@
 }
 
 :root {
-  --background: var(--color-black);
-  --foreground: var(--color-white);
+  --background: var(--color-white);
+  --foreground: var(--color-black);
 }
 
 html,

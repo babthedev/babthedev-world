@@ -1,128 +1,184 @@
-'use client';
+'use client'
 
-import { useRef } from 'react';
-import { useFrame } from '@react-three/fiber';
-import { useKeyboardControls } from '@react-three/drei';
-import { RigidBody, RapierRigidBody, BallCollider } from '@react-three/rapier';
-import { Vector3, Quaternion, Mesh } from 'three';
-import { useWorldStore } from '@/store/useWorldStore';
-import { useEffect } from 'react';
-import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates';
+import { useRef, useEffect, useState } from 'react'
+import { useFrame } from '@react-three/fiber'
+import { useKeyboardControls } from '@react-three/drei'
+import { RigidBody, RapierRigidBody, CapsuleCollider } from '@react-three/rapier'
+import { Vector3, Group, Texture, DataTexture, RedFormat } from 'three'
+import { useWorldStore } from '@/store/useWorldStore'
+import CharacterModel from './CharacterModel'
+import { useCharacterAnimations } from '@/hooks/useCharacterAnimations'
+import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
+import { useMobileControls } from '@/hooks/useMobileControls'
+import {
+  VISITOR_SPEED,
+  TETHER_DISTANCE,
+  LINEAR_DAMPING,
+  VISITOR_COLOR,
+  CHARACTER_CAPSULE_RADIUS,
+  CHARACTER_CAPSULE_HEIGHT,
+  TOON_GRADIENT_STEPS,
+} from '@/lib/constants'
 
-const SPEED = 12;
-const GRAVITY_STRENGTH = 60; // Strong pull to the center of the planet
+// Shared gradient texture — created once here, passed down.
+// (World.tsx also creates one for the ground; this one is for
+// the character until we thread it through props properly in
+// a later pass — functionally identical, negligible cost.)
+const gradientMap = new DataTexture(
+  TOON_GRADIENT_STEPS,
+  TOON_GRADIENT_STEPS.length,
+  1,
+  RedFormat
+)
+gradientMap.needsUpdate = true
+
+const _direction = new Vector3()
+const _forward = new Vector3()
+const _right = new Vector3()
+const _camDir = new Vector3()
+const _worldUp = new Vector3(0, 1, 0)
 
 export default function VisitorController() {
-  const bodyRef = useRef<RapierRigidBody>(null);
-  const meshRef = useRef<Mesh>(null);
-  const [, get] = useKeyboardControls();
-  const isTourActive = useWorldStore((state) => state.isTourActive);
-  const abdulrahmanPosition = useWorldStore((state) => state.abdulrahmanPosition);
-  const setPosition = useWorldStore((state) => state.setPosition);
-  const setTourActive = useWorldStore((state) => state.setTourActive);
+  const bodyRef = useRef<RapierRigidBody>(null)
+  const modelRef = useRef<Group>(null)
+  const [, get] = useKeyboardControls()
 
+  const { isMobile, getDirection } = useMobileControls(() => {
+    // Tap = Interact, reuses the same handler InteractiveProps listens for
+    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
+  })
+
+  const isTourActive = useWorldStore((s) => s.isTourActive)
+  const isReading = useWorldStore((s) => s.isReading)
+  const abdulPos = useWorldStore((s) => s.abdulrahmanPosition)
+  const setPosition = useWorldStore((s) => s.setPosition)
+  const setTourActive = useWorldStore((s) => s.setTourActive)
+  const setFacingAngle = useWorldStore((s) => s.setFacingAngle)
+
+  const { updateFromVelocity } = useCharacterAnimations()
+  const animStateRef = useRef<'idle' | 'walk'>('idle')
+  const [animName, setAnimName] = useState<'idle' | 'walk'>('idle')
+
+  // ── DEEP LINK SPAWN ────────────────────────────────
   useEffect(() => {
-    if (typeof window !== 'undefined' && bodyRef.current) {
-      const path = window.location.pathname as DistrictName;
-      if (WORLD_COORDINATES[path] && path !== '/') {
-        const spawn = WORLD_COORDINATES[path].spawnPoint;
-        bodyRef.current.setTranslation({ x: spawn[0], y: spawn[1], z: spawn[2] }, true);
-      }
+    if (typeof window === 'undefined' || !bodyRef.current) return
+    const path = window.location.pathname as DistrictName
+    const coord = WORLD_COORDINATES[path]
+    if (coord) {
+      bodyRef.current.setTranslation(
+        { x: coord.spawnPoint[0], y: coord.spawnPoint[1], z: coord.spawnPoint[2] },
+        true
+      )
     }
-  }, []);
+  }, [])
 
   useFrame((state, delta) => {
-    if (!bodyRef.current || !meshRef.current) return;
+    if (!bodyRef.current || !modelRef.current) return
 
+    const pos = bodyRef.current.translation()
+    const positionVec = new Vector3(pos.x, pos.y, pos.z)
 
+    const { forward, backward, left, right } = get()
+    const hasInput = forward || backward || left || right
 
-    const pos = bodyRef.current.translation();
-    const positionVector = new Vector3(pos.x, pos.y, pos.z);
-    
-    // 1. Central Gravity (pull towards 0,0,0)
-    const normal = positionVector.clone().normalize();
-    const gravityForce = normal.clone().multiplyScalar(-GRAVITY_STRENGTH);
-    // Apply continuous gravity force
-    bodyRef.current.applyImpulse({ x: gravityForce.x * delta, y: gravityForce.y * delta, z: gravityForce.z * delta }, true);
-
-    // 2. Tangent-Plane Movement Logic
-    const { forward, backward, left, right } = get();
-    
-    // Auto-disable tour if user presses movement keys
-    if (forward || backward || left || right) {
-      if (isTourActive) setTourActive(false);
+    // Movement input breaks tour immediately (per spec: 2-second rule
+    // handled separately in useTourLogic for RESUMING)
+    if (hasInput && isTourActive) {
+      setTourActive(false)
     }
 
-    const direction = new Vector3();
+    _direction.set(0, 0, 0)
 
-    if (isTourActive) {
-      // Auto-follow Abdulrahman
-      const abdulPos = new Vector3(abdulrahmanPosition[0], abdulrahmanPosition[1], abdulrahmanPosition[2]);
-      const distanceToAbdul = positionVector.distanceTo(abdulPos);
-      
-      // Follow closely but keep a small gap
-      if (distanceToAbdul > 2.5) {
-        const rawDir = abdulPos.clone().sub(positionVector).normalize();
-        const projectedDir = rawDir.sub(normal.clone().multiplyScalar(rawDir.dot(normal))).normalize();
-        direction.copy(projectedDir).multiplyScalar(SPEED * 0.8); // Follow slightly slower than max speed
+    // ── READING MODE: ignore all movement input ───────
+    if (isReading) {
+      // no-op, character frozen
+    } else if (isTourActive) {
+      // ── GUIDED TOUR: follow Abdulrahman closely ─────
+      const abdulVec = new Vector3(abdulPos[0], abdulPos[1], abdulPos[2])
+      const distToAbdul = positionVec.distanceTo(abdulVec)
+
+      if (distToAbdul > TETHER_DISTANCE) {
+        _direction.copy(abdulVec).sub(positionVec)
+        _direction.y = 0
+        _direction.normalize().multiplyScalar(VISITOR_SPEED * 0.9)
       }
-    } else {
-      // Manual Player Control
-      const camera = state.camera;
-      const camDir = new Vector3();
-      camera.getWorldDirection(camDir);
-      
-      // Tangent right vector (perpendicular to normal and camera view)
-      const rightVec = new Vector3().crossVectors(camDir, normal).normalize();
-      // Tangent forward vector (perpendicular to normal and right vector)
-      const forwardVec = new Vector3().crossVectors(normal, rightVec).normalize();
+    } else if (isMobile) {
+      const touch = getDirection()
+      if (touch.x !== 0 || touch.z !== 0) {
+        _right.crossVectors(_camDir, _worldUp).normalize()
+        _forward.copy(_camDir)
+        _direction.add(_forward.clone().multiplyScalar(-touch.z))
+        _direction.add(_right.clone().multiplyScalar(touch.x))
+        if (_direction.lengthSq() > 0) {
+          _direction.normalize().multiplyScalar(VISITOR_SPEED)
+        }
+      }
+    } else {  
+      // ── FREE ROAM: camera-relative WASD ─────────────
+      state.camera.getWorldDirection(_camDir)
+      _camDir.y = 0
+      _camDir.normalize()
 
-      if (forward) direction.add(forwardVec);
-      if (backward) direction.sub(forwardVec);
-      if (right) direction.add(rightVec);
-      if (left) direction.sub(rightVec);
+      _right.crossVectors(_camDir, _worldUp).normalize()
+      _forward.copy(_camDir)
 
-      if (direction.lengthSq() > 0) {
-        direction.normalize().multiplyScalar(SPEED);
+      if (forward) _direction.add(_forward)
+      if (backward) _direction.sub(_forward)
+      if (right) _direction.add(_right)
+      if (left) _direction.sub(_right)
+
+      if (_direction.lengthSq() > 0) {
+        _direction.normalize().multiplyScalar(VISITOR_SPEED)
       }
     }
 
-    // Apply movement velocity
-    if (direction.length() > 0) {
-      const currentVel = bodyRef.current.linvel();
-      const currentVelVec = new Vector3(currentVel.x, currentVel.y, currentVel.z);
-      const verticalVel = normal.clone().multiplyScalar(currentVelVec.dot(normal));
-      
-      const newVel = direction.add(verticalVel);
-      bodyRef.current.setLinvel({ x: newVel.x, y: newVel.y, z: newVel.z }, true);
-    } else {
-      // Damping: Kill horizontal velocity, keep vertical
-      const currentVel = bodyRef.current.linvel();
-      const currentVelVec = new Vector3(currentVel.x, currentVel.y, currentVel.z);
-      const verticalVel = normal.clone().multiplyScalar(currentVelVec.dot(normal));
-      bodyRef.current.setLinvel({ x: verticalVel.x, y: verticalVel.y, z: verticalVel.z }, true);
+    // ── APPLY VELOCITY ─────────────────────────────────
+    const currentVel = bodyRef.current.linvel()
+    bodyRef.current.setLinvel(
+      { x: _direction.x, y: currentVel.y, z: _direction.z },
+      true
+    )
+
+    // ── FACING ANGLE ────────────────────────────────────
+    // Used by CameraController for behind-the-shoulder framing
+    const speed = _direction.length()
+    if (speed > 0.1) {
+      const angle = Math.atan2(_direction.x, _direction.z)
+      modelRef.current.rotation.y = angle
+      setFacingAngle(angle)
     }
 
-    // 3. Visual Upright Alignment
-    const up = new Vector3(0, 1, 0);
-    const targetQuaternion = new Quaternion().setFromUnitVectors(up, normal);
-    meshRef.current.quaternion.copy(targetQuaternion);
+    // ── ANIMATION STATE ─────────────────────────────────
+    const nextAnim = updateFromVelocity(speed, VISITOR_SPEED) as 'idle' | 'walk'
+    if (nextAnim !== animStateRef.current) {
+      animStateRef.current = nextAnim
+      setAnimName(nextAnim)
+    }
 
-    // Sync position
-    setPosition([pos.x, pos.y, pos.z]);
-  });
+    // ── SYNC STORE ───────────────────────────────────────
+    setPosition([pos.x, pos.y, pos.z])
+  })
 
   return (
-    // position is [0, 35, 0] so it spawns slightly above the 30-radius planet
-    <RigidBody name="visitor" ref={bodyRef} position={[0, 35, 0]} colliders={false} enabledRotations={[false, false, false]} linearDamping={1}>
-      <BallCollider args={[0.5]} />
-      <mesh ref={meshRef} castShadow>
-        {/* Offset visual mesh up so feet align with the ball collider */}
-        <group position={[0, 1, 0]}>
-          <capsuleGeometry args={[0.5, 1, 4, 8]} />
-          <meshStandardMaterial color="#FFFFFF" wireframe />
-        </group>
-      </mesh>
+    <RigidBody
+      name="visitor"
+      ref={bodyRef}
+      position={[0, 1, 0]}
+      colliders={false}
+      enabledRotations={[false, false, false]}
+      linearDamping={LINEAR_DAMPING}
+    >
+      <CapsuleCollider
+        args={[CHARACTER_CAPSULE_HEIGHT / 2, CHARACTER_CAPSULE_RADIUS]}
+      />
+      <group ref={modelRef}>
+        <CharacterModel
+          url="/visitor.vrm"
+          color={VISITOR_COLOR}
+          gradientMap={gradientMap as unknown as Texture}
+          animationName={animName}
+        />
+      </group>
     </RigidBody>
-  );
+  )
 }

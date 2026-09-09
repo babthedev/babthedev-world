@@ -1,42 +1,51 @@
-import { useEffect, useRef } from 'react';
-import { useWorldStore } from '@/store/useWorldStore';
-
-const IDLE_TIMEOUT_MS = 2000;
+import { useEffect, useRef } from 'react'
+import { useWorldStore } from '@/store/useWorldStore'
+import { IDLE_RESUME_TOUR_MS } from '@/lib/constants'
 
 export function useTourLogic() {
-  const isTourActive = useWorldStore((state) => state.isTourActive);
-  const setTourActive = useWorldStore((state) => state.setTourActive);
-  const idleTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const isTourActive = useWorldStore((s) => s.isTourActive)
+  const introComplete = useWorldStore((s) => s.introComplete)
+  const isReading = useWorldStore((s) => s.isReading)
+  const setTourActive = useWorldStore((s) => s.setTourActive)
+
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    // We only care about resuming the tour when it's currently inactive
-    if (isTourActive) return;
+    // Tour logic only matters once intro has finished
+    if (!introComplete) return
+    // Already touring — nothing to resume
+    if (isTourActive) return
+    // Reading panel open — movement is frozen anyway, don't resume tour
+    if (isReading) return
 
-    const handleInput = () => {
-      // Clear existing timer if user provides input
+    const clearTimer = () => {
       if (idleTimerRef.current) {
-        clearTimeout(idleTimerRef.current);
+        clearTimeout(idleTimerRef.current)
+        idleTimerRef.current = null
       }
+    }
 
-      // Set a new timer to resume the tour
+    const armIdleTimer = () => {
+      clearTimer()
       idleTimerRef.current = setTimeout(() => {
-        setTourActive(true);
-      }, IDLE_TIMEOUT_MS);
-    };
+        setTourActive(true)
+      }, IDLE_RESUME_TOUR_MS)
+    }
 
-    // Attach listeners to window
-    window.addEventListener('keydown', handleInput);
-    window.addEventListener('pointerdown', handleInput);
-    window.addEventListener('pointermove', handleInput);
+    const handleActivity = () => {
+      armIdleTimer()
+    }
 
-    // Initial timer start
-    handleInput();
+    window.addEventListener('keydown', handleActivity)
+    window.addEventListener('pointerdown', handleActivity)
+
+    // Start counting immediately on entering Free Roam
+    armIdleTimer()
 
     return () => {
-      if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
-      window.removeEventListener('keydown', handleInput);
-      window.removeEventListener('pointerdown', handleInput);
-      window.removeEventListener('pointermove', handleInput);
-    };
-  }, [isTourActive, setTourActive]);
+      clearTimer()
+      window.removeEventListener('keydown', handleActivity)
+      window.removeEventListener('pointerdown', handleActivity)
+    }
+  }, [isTourActive, introComplete, isReading, setTourActive])
 }

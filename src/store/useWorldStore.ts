@@ -1,52 +1,101 @@
-import { create } from 'zustand';
+import { create } from 'zustand'
 
-interface TourState {
-  isTourActive: boolean;
-  currentCheckpoint: string | null;
-  tourWaypointIndex: number;
-  currentDialogue: string | null;
-  setTourActive: (active: boolean) => void;
-  setCheckpoint: (checkpoint: string | null) => void;
-  setTourWaypointIndex: (index: number) => void;
-  setCurrentDialogue: (dialogue: string | null) => void;
+// ─── SLICES ───────────────────────────────────────────────
+
+interface WelcomeSlice {
+  introComplete: boolean
+  setIntroComplete: (v: boolean) => void
 }
 
-interface PlayerState {
-  position: [number, number, number];
-  abdulrahmanPosition: [number, number, number];
-  isReading: boolean;
-  setPosition: (pos: [number, number, number]) => void;
-  setAbdulrahmanPosition: (pos: [number, number, number]) => void;
-  setIsReading: (reading: boolean) => void;
+interface TourSlice {
+  isTourActive: boolean
+  tourWaypointIndex: number
+  currentDialogue: string | null
+  visitedDistricts: string[]
+  setTourActive: (v: boolean) => void
+  setTourWaypointIndex: (i: number) => void
+  setCurrentDialogue: (text: string | null) => void
+  markDistrictVisited: (district: string) => void
 }
 
-interface UIState {
-  activePanel: string | null;
-  setActivePanel: (panel: string | null) => void;
+interface PlayerSlice {
+  position: [number, number, number]
+  abdulrahmanPosition: [number, number, number]
+  facingAngle: number
+  setPosition: (pos: [number, number, number]) => void
+  setAbdulrahmanPosition: (pos: [number, number, number]) => void
+  setFacingAngle: (angle: number) => void
 }
 
-interface WorldStore extends TourState, PlayerState, UIState {}
+interface UISlice {
+  activePanel: string | null
+  isReading: boolean
+  currentDistrict: string
+  districtLabelVisible: boolean
+  setActivePanel: (id: string | null) => void
+  setIsReading: (v: boolean) => void
+  setCurrentDistrict: (d: string) => void
+  setDistrictLabelVisible: (v: boolean) => void
+}
+
+interface NPCSlice {
+  nearbyNPC: string | null
+  npcDialogue: string | null
+  setNearbyNPC: (id: string | null) => void
+  setNpcDialogue: (text: string | null) => void
+}
+
+// ─── COMBINED STORE ───────────────────────────────────────
+
+interface WorldStore
+  extends WelcomeSlice,
+    TourSlice,
+    PlayerSlice,
+    UISlice,
+    NPCSlice {}
 
 export const useWorldStore = create<WorldStore>((set) => ({
-  // Tour Slice
+
+  // Welcome
+  introComplete: false,
+  setIntroComplete: (v) => set({ introComplete: v }),
+
+  // Tour
   isTourActive: true,
-  currentCheckpoint: null,
   tourWaypointIndex: 0,
   currentDialogue: null,
-  setTourActive: (active) => set({ isTourActive: active }),
-  setCheckpoint: (checkpoint) => set({ currentCheckpoint: checkpoint }),
-  setTourWaypointIndex: (index) => set({ tourWaypointIndex: index }),
-  setCurrentDialogue: (dialogue) => set({ currentDialogue: dialogue }),
+  visitedDistricts: [],
+  setTourActive: (v) => set({ isTourActive: v }),
+  setTourWaypointIndex: (i) => set({ tourWaypointIndex: i }),
+  setCurrentDialogue: (text) => set({ currentDialogue: text }),
+  markDistrictVisited: (district) =>
+    set((state) => ({
+      visitedDistricts: state.visitedDistricts.includes(district)
+        ? state.visitedDistricts
+        : [...state.visitedDistricts, district],
+    })),
 
-  // Player Slice
+  // Player
   position: [0, 0, 0],
-  abdulrahmanPosition: [0, 0, 0],
-  isReading: false,
+  abdulrahmanPosition: [0.7, 0, 0],
+  facingAngle: 0,
   setPosition: (pos) => set({ position: pos }),
   setAbdulrahmanPosition: (pos) => set({ abdulrahmanPosition: pos }),
-  setIsReading: (reading) => set({ isReading: reading }),
+  setFacingAngle: (angle) => set({ facingAngle: angle }),
 
-  // UI Slice
+  // UI
   activePanel: null,
-  setActivePanel: (panel) => set({ activePanel: panel }),
-}));
+  isReading: false,
+  currentDistrict: '/',
+  districtLabelVisible: false,
+  setActivePanel: (id) => set({ activePanel: id, isReading: id !== null }),
+  setIsReading: (v) => set({ isReading: v }),
+  setCurrentDistrict: (d) => set({ currentDistrict: d }),
+  setDistrictLabelVisible: (v) => set({ districtLabelVisible: v }),
+
+  // NPC
+  nearbyNPC: null,
+  npcDialogue: null,
+  setNearbyNPC: (id) => set({ nearbyNPC: id }),
+  setNpcDialogue: (text) => set({ npcDialogue: text }),
+}))
