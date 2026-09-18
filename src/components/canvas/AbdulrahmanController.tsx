@@ -29,6 +29,7 @@ import {
 } from '@/lib/sphereMath'
 import { flatToSphere } from '@/lib/surfacePlacement'
 import { emitFootstepPuff } from './FootstepPuffs'
+import { useTelemetry } from '@/hooks/useTelemetry'
 
 // Pre-compute tour waypoints on the sphere surface
 const SPHERE_TOUR_WAYPOINTS = TOUR_WAYPOINTS.map((w) => {
@@ -67,9 +68,15 @@ export default function AbdulrahmanController() {
   const isReading = useWorldStore((s) => s.isReading)
   const tourWaypointIndex = useWorldStore((s) => s.tourWaypointIndex)
   const setTourWaypointIndex = useWorldStore((s) => s.setTourWaypointIndex)
+  const setTourActive = useWorldStore((s) => s.setTourActive)
   const setCurrentDialogue = useWorldStore((s) => s.setCurrentDialogue)
   const setAbdulrahmanPosition = useWorldStore((s) => s.setAbdulrahmanPosition)
+  const tourCompleted = useWorldStore((s) => s.tourCompleted)
+  const setTourCompleted = useWorldStore((s) => s.setTourCompleted)
+  const setPassportStampVisible = useWorldStore((s) => s.setPassportStampVisible)
+  const triggerCraneFlyover = useWorldStore((s) => s.triggerCraneFlyover)
 
+  const { trackEvent } = useTelemetry()
   const { updateFromVelocity } = useCharacterAnimations()
   const animStateRef = useRef<'idle' | 'walk'>('idle')
   const [animName, setAnimName] = useState<'idle' | 'walk'>('idle')
@@ -188,6 +195,20 @@ export default function AbdulrahmanController() {
             dist <= TETHER_DISTANCE
           ) {
             setTourWaypointIndex(tourWaypointIndex + 1)
+          } else if (
+            tourWaypointIndex === SPHERE_TOUR_WAYPOINTS.length - 1 &&
+            dist <= TETHER_DISTANCE &&
+            !tourCompleted
+          ) {
+            // Q80: Reached final closing waypoint back at the Hub
+            setTourCompleted(true)
+            setPassportStampVisible(true)
+            triggerCraneFlyover()
+            trackEvent('tour_completed')
+            // After closing dialogue finishes, allow visitor to explore freely
+            setTimeout(() => {
+              setTourActive(false)
+            }, 6000)
           }
         }
       }

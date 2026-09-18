@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useMemo } from 'react'
+import { useRef, useMemo, useEffect } from 'react'
 import { useFrame } from '@react-three/fiber'
 import {
   InstancedMesh,
@@ -8,8 +8,8 @@ import {
   Vector3,
   MeshToonMaterial,
 } from 'three'
-import { PLANET_RADIUS } from '@/lib/constants'
-import { INK_COLOR } from '@/lib/constants'
+import { PLANET_RADIUS, INK_COLOR } from '@/lib/constants'
+import { useWorldStore } from '@/store/useWorldStore'
 
 const CRANE_COUNT = 6
 
@@ -33,6 +33,14 @@ interface OrbitConfig {
 
 export default function PaperCranes() {
   const meshRef = useRef<InstancedMesh>(null)
+  const craneFlyoverTrigger = useWorldStore((s) => s.craneFlyoverTrigger)
+  const flyoverStartTime = useRef<number>(-999)
+
+  useEffect(() => {
+    if (craneFlyoverTrigger > 0) {
+      flyoverStartTime.current = -1 // flag to capture next frame time
+    }
+  }, [craneFlyoverTrigger])
 
   // Configure distinct inclined orbital paths around the sphere
   const orbits = useMemo<OrbitConfig[]>(
@@ -113,12 +121,28 @@ export default function PaperCranes() {
     if (!meshRef.current) return
     const t = state.clock.getElapsedTime()
 
+    if (flyoverStartTime.current === -1) {
+      flyoverStartTime.current = t
+    }
+
+    // Q80: Low flock flyover swoop calculation (lasts 8 seconds)
+    let swoopDip = 0
+    const flyoverElapsed = t - flyoverStartTime.current
+    if (flyoverElapsed >= 0 && flyoverElapsed < 8.0) {
+      // Smooth sine bell curve peaking at ~8.5m dip towards surface
+      swoopDip = Math.sin((flyoverElapsed / 8.0) * Math.PI) * 8.5
+    }
+
     orbits.forEach((orbit, i) => {
-      const angle = orbit.phaseOffset + t * orbit.speed
-      const currentRadius =
-        orbit.radius +
-        Math.sin(t * orbit.altitudeSineFreq + orbit.phaseOffset) *
-          orbit.altitudeSineAmp
+      const speedMultiplier = swoopDip > 0 ? 1.6 : 1.0
+      const angle = orbit.phaseOffset + t * (orbit.speed * speedMultiplier)
+      const currentRadius = Math.max(
+        PLANET_RADIUS + 2.8,
+        orbit.radius -
+          swoopDip +
+          Math.sin(t * orbit.altitudeSineFreq + orbit.phaseOffset) *
+            orbit.altitudeSineAmp
+      )
 
       // 1. Position in the flat orbital plane (XZ)
       const xOrb = currentRadius * Math.cos(angle)

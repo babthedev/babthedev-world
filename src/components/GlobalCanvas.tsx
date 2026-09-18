@@ -11,6 +11,9 @@ import ReadingPanel from '@/ui/ReadingPanel'
 import SphereCompass from '@/ui/SphereCompass'
 import DebugOverlay from '@/ui/DebugOverlay'
 import InkIrisTransition from '@/ui/InkIrisTransition'
+import ContactModal from '@/ui/ContactModal'
+import GuestbookModal from '@/ui/GuestbookModal'
+import PassportStampToast from '@/ui/PassportStampToast'
 import WebGLErrorBoundary from '@/components/WebGLErrorBoundary'
 import { useTourLogic } from '@/hooks/useTourLogic'
 import { usePageVisibility } from '@/hooks/usePageVisibility'
@@ -57,6 +60,9 @@ export default function GlobalCanvas() {
       <DistrictLabel />
       <HUDIcons />
       <ReadingPanel />
+      <ContactModal />
+      <GuestbookModal />
+      <PassportStampToast />
       <IntroDialogue />
       <SphereCompass />
       <DebugOverlay />

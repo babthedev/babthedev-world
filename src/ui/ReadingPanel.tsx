@@ -6,6 +6,7 @@ import { useWorldStore } from '@/store/useWorldStore'
 import { SPECIAL_DIALOGUES } from '@/lib/dialogue'
 import { PANEL_SLIDE_MS } from '@/lib/constants'
 import { useAudioManager } from '@/hooks/useAudioManager'
+import { useTelemetry } from '@/hooks/useTelemetry'
 import { CodeBlock, Blockquote, Callout, CaptionedImage } from './MdxComponents'
 
 interface ContentResponse {
@@ -25,6 +26,7 @@ export default function ReadingPanel() {
   const setActivePanel = useWorldStore((s) => s.setActivePanel)
   const setCurrentDialogue = useWorldStore((s) => s.setCurrentDialogue)
   const { playPageTurn, playClick } = useAudioManager()
+  const { trackEvent } = useTelemetry()
 
   const [content, setContent] = useState<ContentResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -32,6 +34,19 @@ export default function ReadingPanel() {
   const [headings, setHeadings] = useState<ChapterHeading[]>([])
 
   const isOpen = activePanel !== null
+
+  // ── Q76: TELEMETRY TRACKING ON CONTENT OPEN & 2-MIN ENGAGEMENT ─
+  useEffect(() => {
+    if (!activePanel) return
+
+    trackEvent('content_opened', { slug: activePanel })
+
+    const twoMinTimer = setTimeout(() => {
+      trackEvent('content_read_2min', { slug: activePanel })
+    }, 120_000)
+
+    return () => clearTimeout(twoMinTimer)
+  }, [activePanel, trackEvent])
 
   // ── FETCH CONTENT WHEN PANEL OPENS ──────────────────────
   useEffect(() => {
@@ -195,6 +210,29 @@ export default function ReadingPanel() {
 
           {!loading && content?.found && (
             <article className="max-w-none text-[#111111]">
+              {/* ── Q78: 1-CLICK RESUME PDF DOWNLOAD ───────────────── */}
+              {activePanel === 'resume' && (
+                <div className="mb-8 p-4 border-2 border-black bg-white flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-[3px_3px_0px_0px_rgba(0,0,0,1)]">
+                  <div>
+                    <p className="font-mono text-xs font-bold uppercase tracking-wider text-black">
+                      OFFICIAL CURRICULUM VITAE
+                    </p>
+                    <p className="font-inter text-xs text-black/60">
+                      ATS-friendly printable PDF (1-page)
+                    </p>
+                  </div>
+                  <a
+                    href="/resume.pdf"
+                    download="Abdulrahman_Resume.pdf"
+                    onClick={() => playClick()}
+                    className="inline-flex items-center justify-center gap-2 border-2 border-black bg-black text-white px-4 py-2 font-mono text-xs font-bold tracking-wider uppercase hover:bg-white hover:text-black transition-colors shrink-0 shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+                  >
+                    <span>DOWNLOAD PDF</span>
+                    <span>↓</span>
+                  </a>
+                </div>
+              )}
+
               {content.frontmatter?.title && (
                 <h1 className="text-black font-merriweather text-3xl md:text-4xl font-black tracking-tight mb-2">
                   {content.frontmatter.title}

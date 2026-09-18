@@ -97,6 +97,20 @@ export const TOUR_WAYPOINTS: TourWaypoint[] = [
       },
     ],
   },
+  {
+    // Q80: Loop back to The Hub to complete the full spherical tour
+    position: WORLD_COORDINATES['/'].spawnPoint,
+    lines: [
+      {
+        text: "We've walked the whole loop... thank you for visiting BabWorld.",
+        gesture: 'wave',
+      },
+      {
+        text: "Feel free to explore freely or grab a coffee at Joe's.",
+        gesture: 'idle',
+      },
+    ],
+  },
 ]
 
 // ─── NPC DIALOGUES ────────────────────────────────────────

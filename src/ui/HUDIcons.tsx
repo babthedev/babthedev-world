@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { HUD_ICON_SIZE } from '@/lib/constants'
-import {useAudioManager} from '@/hooks/useAudioManager'
+import { useAudioManager } from '@/hooks/useAudioManager'
+import { useWorldStore } from '@/store/useWorldStore'
 
 const MUTE_STORAGE_KEY = 'babthedev_muted'
 
@@ -26,7 +27,8 @@ export default function HUDIcons() {
   const [mapOpen, setMapOpen] = useState(false)
   const [muted, setMutedState] = useState(false)
   const gainRef = useRef<GainNode | null>(null)
-  const { setMuted } = useAudioManager()
+  const { setMuted, playClick } = useAudioManager()
+  const setActivePanel = useWorldStore((s) => s.setActivePanel)
 
   // ── INITIALISE AUDIO CONTEXT ON FIRST USER GESTURE ──────────
   // Browsers require a user interaction before AudioContext can run.
@@ -61,6 +63,11 @@ export default function HUDIcons() {
     setMapOpen((prev) => !prev)
   }, [])
 
+  const openContact = useCallback(() => {
+    playClick()
+    setActivePanel('contact')
+  }, [playClick, setActivePanel])
+
   // ── ESCAPE CLOSES MAP ────────────────────────────────────
   useEffect(() => {
     if (!mapOpen) return
@@ -83,16 +90,25 @@ export default function HUDIcons() {
         <button
           onClick={toggleMap}
           aria-label="Open map"
-          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors"
+          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           style={{ width: HUD_ICON_SIZE, height: HUD_ICON_SIZE }}
         >
           <MapIcon />
         </button>
 
         <button
+          onClick={openContact}
+          aria-label="Send letter / Contact Abdulrahman"
+          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+          style={{ width: HUD_ICON_SIZE, height: HUD_ICON_SIZE }}
+        >
+          <MailIcon />
+        </button>
+
+        <button
           onClick={toggleMute}
           aria-label={muted ? 'Unmute' : 'Mute'}
-          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors"
+          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
           style={{ width: HUD_ICON_SIZE, height: HUD_ICON_SIZE }}
         >
           {muted ? <MuteIcon /> : <SoundIcon />}
@@ -170,6 +186,15 @@ function MapEntry({
 }
 
 // ─── ICONS (inline SVG, monochrome, 2px stroke) ────────────
+
+function MailIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <rect x="2" y="4" width="20" height="16" rx="2" />
+      <path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7" />
+    </svg>
+  )
+}
 
 function MapIcon() {
   return (

@@ -29,6 +29,15 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
   // Archive terminal location (East end, X ~ 46)
   const terminal = useMemo(() => flatToSphere(46, 0, 0), [])
 
+  // Q77: Welcome Terrace Mailbox (-34, -8)
+  const mailbox = useMemo(() => flatToSphere(-34, -8, 0), [])
+
+  // Q78: Terrace Chalkboard Standee (-42, -5)
+  const chalkboard = useMemo(() => flatToSphere(-42, -5, 0), [])
+
+  // Q79: Cafe Terrace Corkboard Guestbook (-40, 6)
+  const corkboard = useMemo(() => flatToSphere(-40, 6, 0), [])
+
   const bookMaterial = useMemo(
     () =>
       new MeshToonMaterial({
@@ -73,6 +82,9 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
   const plinth1Ref = useRef<Group>(null)
   const plinth2Ref = useRef<Group>(null)
   const terminalRef = useRef<Group>(null)
+  const mailboxRef = useRef<Group>(null)
+  const chalkboardRef = useRef<Group>(null)
+  const corkboardRef = useRef<Group>(null)
 
   const nearbyPropId = useWorldStore((s) => s.nearbyPropId)
 
@@ -111,7 +123,10 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
     applyBob('essay-02', book2Ref, book2.position)
     applyBob('oryzon', plinth1Ref, plinth1.position)
     applyBob('roadwarden', plinth2Ref, plinth2.position)
-    applyBob('terminal', terminalRef, terminal.position)
+    applyBob('archive', terminalRef, terminal.position)
+    applyBob('contact', mailboxRef, mailbox.position)
+    applyBob('resume', chalkboardRef, chalkboard.position)
+    applyBob('guestbook', corkboardRef, corkboard.position)
   })
 
   return (
@@ -239,6 +254,151 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           anchorY="middle"
         >
           [E] SEARCH ALL
+        </Text>
+      </group>
+
+      {/* ── Q77: WELCOME TERRACE MAILBOX ─────────────────────── */}
+      <group ref={mailboxRef} position={mailbox.position} quaternion={mailbox.quaternion}>
+        {/* Wooden post */}
+        <mesh position={[0, 0.45, 0]} material={plinthMaterial} castShadow>
+          <cylinderGeometry args={[0.06, 0.06, 0.9, 8]} />
+        </mesh>
+        {/* Mailbox casing */}
+        <mesh position={[0, 1.05, 0]} material={bookMaterial} castShadow>
+          <boxGeometry args={[0.36, 0.38, 0.58]} />
+        </mesh>
+        {/* Mail Slot */}
+        <mesh position={[0, 1.12, 0.291]}>
+          <planeGeometry args={[0.24, 0.04]} />
+          <meshBasicMaterial color="#000000" />
+        </mesh>
+        {/* Mailbox Flag */}
+        <mesh position={[0.19, 1.15, -0.1]} material={pagesMaterial}>
+          <boxGeometry args={[0.02, 0.2, 0.08]} />
+        </mesh>
+        {/* SDF Signage */}
+        <Text
+          position={[0, 1.34, 0]}
+          fontSize={0.07}
+          color="#FAF9F5"
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.1}
+        >
+          MAILBOX
+        </Text>
+        <Text
+          position={[0, 0.92, 0.295]}
+          fontSize={0.04}
+          color="#FAF9F5"
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.05}
+        >
+          [E] SEND LETTER
+        </Text>
+      </group>
+
+      {/* ── Q78: TERRACE CHALKBOARD STANDEE (RESUME / CV) ────── */}
+      <group ref={chalkboardRef} position={chalkboard.position} quaternion={chalkboard.quaternion}>
+        {/* A-frame easel legs */}
+        <mesh position={[-0.4, 0.5, 0]} material={plinthMaterial}>
+          <boxGeometry args={[0.05, 1.0, 0.06]} />
+        </mesh>
+        <mesh position={[0.4, 0.5, 0]} material={plinthMaterial}>
+          <boxGeometry args={[0.05, 1.0, 0.06]} />
+        </mesh>
+        {/* Slate blackboard */}
+        <mesh position={[0, 0.72, 0.02]} material={bookMaterial} castShadow>
+          <boxGeometry args={[0.78, 0.92, 0.04]} />
+        </mesh>
+        {/* SDF Chalk lettering */}
+        <Text
+          position={[0, 0.98, 0.05]}
+          fontSize={0.075}
+          color="#FFFFFF"
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.08}
+        >
+          RESUME / CV
+        </Text>
+        <Text
+          position={[0, 0.85, 0.05]}
+          fontSize={0.045}
+          color="#CCCCCC"
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.06}
+        >
+          ABDULRAHMAN
+        </Text>
+        <Text
+          position={[0, 0.74, 0.05]}
+          fontSize={0.038}
+          color="#999999"
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.04}
+        >
+          SYSTEMS & 3D WEB
+        </Text>
+        <Text
+          position={[0, 0.58, 0.05]}
+          fontSize={0.042}
+          color="#FFFFFF"
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.05}
+        >
+          [E] OPEN & DOWNLOAD PDF
+        </Text>
+      </group>
+
+      {/* ── Q79: CAFE TERRACE CORKBOARD GUESTBOOK ─────────────── */}
+      <group ref={corkboardRef} position={corkboard.position} quaternion={corkboard.quaternion}>
+        {/* Stand post */}
+        <mesh position={[0, 0.45, 0]} material={plinthMaterial}>
+          <cylinderGeometry args={[0.05, 0.05, 0.9, 8]} />
+        </mesh>
+        {/* Frame */}
+        <mesh position={[0, 1.05, 0]} material={plinthMaterial} castShadow>
+          <boxGeometry args={[1.22, 0.82, 0.06]} />
+        </mesh>
+        {/* Corkboard back */}
+        <mesh position={[0, 1.05, 0.015]} material={bookMaterial}>
+          <boxGeometry args={[1.14, 0.74, 0.04]} />
+        </mesh>
+        {/* Pinned notes */}
+        <mesh position={[-0.32, 1.12, 0.04]} material={pagesMaterial} rotation={[0, 0, 0.05]}>
+          <boxGeometry args={[0.26, 0.2, 0.01]} />
+        </mesh>
+        <mesh position={[0.08, 1.1, 0.04]} material={pagesMaterial} rotation={[0, 0, -0.04]}>
+          <boxGeometry args={[0.26, 0.2, 0.01]} />
+        </mesh>
+        <mesh position={[0.34, 0.98, 0.04]} material={pagesMaterial} rotation={[0, 0, 0.08]}>
+          <boxGeometry args={[0.24, 0.18, 0.01]} />
+        </mesh>
+        {/* SDF Signage */}
+        <Text
+          position={[0, 1.34, 0]}
+          fontSize={0.07}
+          color="#FAF9F5"
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.08}
+        >
+          CAFE GUESTBOOK
+        </Text>
+        <Text
+          position={[0, 0.88, 0.05]}
+          fontSize={0.042}
+          color="#FAF9F5"
+          anchorX="center"
+          anchorY="middle"
+          letterSpacing={0.05}
+        >
+          [E] PIN A NOTE
         </Text>
       </group>
     </group>

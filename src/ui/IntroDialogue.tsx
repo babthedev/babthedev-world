@@ -5,12 +5,14 @@ import { useWorldStore } from '@/store/useWorldStore'
 import { INTRO_SEQUENCE } from '@/lib/dialogue'
 import { INTRO_AUTO_DISMISS_MS } from '@/lib/constants'
 import { useAudioManager } from '@/hooks/useAudioManager'
+import { useTelemetry } from '@/hooks/useTelemetry'
 
 export default function IntroDialogue() {
   const introComplete = useWorldStore((s) => s.introComplete)
   const setIntroComplete = useWorldStore((s) => s.setIntroComplete)
   const setTourActive = useWorldStore((s) => s.setTourActive)
   const { playDialogueBlip, playTypewriterTap } = useAudioManager()
+  const { trackEvent } = useTelemetry()
 
   const [lineIndex, setLineIndex] = useState(0)
   const [visible, setVisible] = useState(true)
@@ -48,8 +50,9 @@ export default function IntroDialogue() {
     setTimeout(() => {
       setIntroComplete(true)
       setTourActive(true) // Guided tour begins immediately after intro
+      trackEvent('tour_started')
     }, 400)
-  }, [setIntroComplete, setTourActive])
+  }, [setIntroComplete, setTourActive, trackEvent])
 
   const advance = useCallback(() => {
     playTypewriterTap()

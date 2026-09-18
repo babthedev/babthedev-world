@@ -12,10 +12,16 @@ interface TourSlice {
   tourWaypointIndex: number
   currentDialogue: string | null
   visitedDistricts: string[]
+  tourCompleted: boolean
+  passportStampVisible: boolean
+  craneFlyoverTrigger: number
   setTourActive: (v: boolean) => void
   setTourWaypointIndex: (i: number) => void
   setCurrentDialogue: (text: string | null) => void
   markDistrictVisited: (district: string) => void
+  setTourCompleted: (v: boolean) => void
+  setPassportStampVisible: (v: boolean) => void
+  triggerCraneFlyover: () => void
 }
 
 interface PlayerSlice {
@@ -104,6 +110,9 @@ export const useWorldStore = create<WorldStore>((set) => ({
   tourWaypointIndex: 0,
   currentDialogue: null,
   visitedDistricts: [],
+  tourCompleted: false,
+  passportStampVisible: false,
+  craneFlyoverTrigger: 0,
   setTourActive: (v) => set({ isTourActive: v }),
   setTourWaypointIndex: (i) => set({ tourWaypointIndex: i }),
   setCurrentDialogue: (text) => set({ currentDialogue: text }),
@@ -113,6 +122,10 @@ export const useWorldStore = create<WorldStore>((set) => ({
         ? state.visitedDistricts
         : [...state.visitedDistricts, district],
     })),
+  setTourCompleted: (v) => set({ tourCompleted: v }),
+  setPassportStampVisible: (v) => set({ passportStampVisible: v }),
+  triggerCraneFlyover: () =>
+    set((s) => ({ craneFlyoverTrigger: s.craneFlyoverTrigger + 1 })),
 
   // Player
   position: [0, 0, 0],
