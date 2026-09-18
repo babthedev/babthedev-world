@@ -16,6 +16,7 @@ import FlickerLight from './FlickerLight'
 import DistrictGateways from './DistrictGateways'
 import InWorldSignage from './InWorldSignage'
 import RoadMarkings from './RoadMarkings'
+import PhysicalProps from './PhysicalProps'
 
 interface EnvironmentProps {
   gradientMap: Texture
@@ -198,6 +199,9 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
 
       {/* ── Q135: OVERHEAD DISTRICT GATEWAYS ─────────── */}
       <DistrictGateways gradientMap={gradientMap} />
+
+      {/* ── Q112-Q115: PHYSICAL 3D CONTENT PROPS ────── */}
+      <PhysicalProps gradientMap={gradientMap} />
     </group>
   )
 }
