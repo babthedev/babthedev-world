@@ -1,17 +1,18 @@
 'use client'
 
 import { useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { Vector3, MathUtils } from 'three'
+import { useFrame, useThree } from '@react-three/fiber'
+import { Vector3, MathUtils, Raycaster, Mesh, MeshToonMaterial } from 'three'
 import { useWorldStore } from '@/store/useWorldStore'
 import { CAMERA_HEIGHT, CAMERA_BACK, CAMERA_LERP } from '@/lib/constants'
-import { Raycaster, Mesh, MeshToonMaterial } from 'three'
-import { useThree } from '@react-three/fiber'
-
+import { getSurfaceNormal, getTangentBasis } from '@/lib/sphereMath'
 
 // Pre-allocated vectors — avoids GC pressure inside useFrame
 const _desired = new Vector3()
 const _lookAt = new Vector3()
+const _posVec = new Vector3()
+const _normal = new Vector3()
+const _behindDir = new Vector3()
 
 export default function CameraController() {
   const visitorPos = useWorldStore((state) => state.position)
@@ -29,6 +30,14 @@ export default function CameraController() {
 
   useFrame((state, delta) => {
     const [vx, vy, vz] = visitorPos
+    _posVec.set(vx, vy, vz)
+
+    // ── SURFACE-RELATIVE CAMERA ───────────────────────────
+    // On a sphere, "up" is the surface normal at the character's
+    // position, not the global Y axis. The camera orbits behind
+    // the character in the tangent plane.
+    _normal.copy(getSurfaceNormal(_posVec))
+    const { forward: tangentForward, right: tangentRight } = getTangentBasis(_normal)
 
     // Smooth the camera's angle toward visitor's facing angle
     // Lower value = more lag = heavier camera feel
@@ -40,31 +49,39 @@ export default function CameraController() {
 
     const a = smoothedAngle.current
 
-    // Camera position = visitor + (BACK behind them) + (HEIGHT above them)
-    // facingAngle is set via atan2(dx, dz) in VisitorController,
-    // so to place camera BEHIND: negate both components.
-    //
-    // facingAngle = 0 → visitor faces +Z → camera at (0, H, -BACK)
-    // facingAngle = π → visitor faces -Z → camera at (0, H, +BACK)
-    const backX = -Math.sin(a) * CAMERA_BACK
-    const backZ = -Math.cos(a) * CAMERA_BACK
+    // "Behind" direction in tangent plane:
+    // facingAngle is relative to tangentForward/tangentRight basis
+    // so we compose the behind direction from those vectors
+    _behindDir
+      .copy(tangentForward).multiplyScalar(-Math.cos(a))
+      .add(tangentRight.clone().multiplyScalar(-Math.sin(a)))
 
-    // When reading panel is open: shift camera left (-X)
+    // When reading panel is open: shift camera left
     // so both characters remain visible in the 60% uncovered screen
-    const panX = isReading ? -3 : 0
+    const panShift = isReading
+      ? tangentRight.clone().multiplyScalar(-3)
+      : new Vector3(0, 0, 0)
 
-    _desired.set(
-      vx + backX + panX,
-      vy + CAMERA_HEIGHT,
-      vz + backZ
-    )
+    // Camera position:
+    // Start at character position,
+    // go BACK behind them in tangent plane,
+    // go HEIGHT above them along surface normal
+    _desired.set(vx, vy, vz)
+      .add(_behindDir.clone().multiplyScalar(CAMERA_BACK))
+      .add(_normal.clone().multiplyScalar(CAMERA_HEIGHT))
+      .add(panShift)
 
     // Smooth camera position
     state.camera.position.lerp(_desired, CAMERA_LERP * delta)
 
-    // Look at visitor's mid-body (Y + 1 avoids staring at feet)
-    _lookAt.set(vx, vy + 1.0, vz)
+    // Look at visitor's mid-body (1 unit above position along normal)
+    _lookAt.set(vx, vy, vz)
+      .add(_normal.clone().multiplyScalar(1.0))
     state.camera.lookAt(_lookAt)
+
+    // Set camera "up" vector to surface normal so the horizon
+    // stays level relative to the planet surface
+    state.camera.up.copy(_normal)
 
     // ── OBJECT FADE-THROUGH ─────────────────────────────
     // Raycast from camera to player, fade objects blocking view
