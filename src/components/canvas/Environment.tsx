@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
-import { Mesh, MeshToonMaterial, Texture } from 'three'
+import { Mesh, MeshToonMaterial, Texture, Quaternion, Euler } from 'three'
 import { RigidBody } from '@react-three/rapier'
 import {
   ROAD_TILES,
@@ -10,12 +10,35 @@ import {
   PROP_LOCATIONS,
   NPC_LOCATIONS,
 } from '@/lib/worldCoordinates'
+import { mapToSphere } from '@/lib/surfacePlacement'
 import NPCCharacter from './NPCCharacter'
 import FlickerLight from './FlickerLight'
 
 interface EnvironmentProps {
   gradientMap: Texture
 }
+
+// ── Pre-compute sphere-projected positions at module level ──
+// This avoids recalculating every render.
+const SPHERE_ROADS = mapToSphere(ROAD_TILES.map(t => ({
+  ...t,
+  rotation: t.rotation ?? [0, 0, 0] as [number, number, number],
+})))
+
+const SPHERE_BUILDINGS = mapToSphere(BUILDINGS.map(b => ({
+  ...b,
+  rotation: b.rotation ?? [0, 0, 0] as [number, number, number],
+})))
+
+const SPHERE_PROPS = mapToSphere(PROP_LOCATIONS.map(p => ({
+  ...p,
+  rotation: p.rotation ?? [0, 0, 0] as [number, number, number],
+})))
+
+const SPHERE_NPCS = mapToSphere(NPC_LOCATIONS.map(n => ({
+  ...n,
+  rotation: n.rotation ?? [0, 0, 0] as [number, number, number],
+})))
 
 // ── GENERIC KENNEY ASSET LOADER ─────────────────────────
 // Loads any GLB from /public/kenney/, strips its material,
@@ -76,8 +99,9 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
       {/* ── ROADS ────────────────────────────────────
           Non-colliding — visitor walks over these freely,
           they're just visual ground dressing.
+          Now projected onto the sphere surface.
       ──────────────────────────────────────────────── */}
-      {ROAD_TILES.map((tile, i) => (
+      {SPHERE_ROADS.map((tile, i) => (
         <KenneyAsset
           key={`road-${i}`}
           model={tile.model}
@@ -92,16 +116,15 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
       {/* ── BUILDINGS ────────────────────────────────
           Fixed RigidBody wrapper with a simple box collider
           approximation so characters can't walk through walls.
-          Uses trimesh-free cuboid for perf — good enough for
-          blocky Kenney building silhouettes.
+          Projected onto sphere surface with normal alignment.
       ──────────────────────────────────────────────── */}
-      {BUILDINGS.map((building, i) => (
+      {SPHERE_BUILDINGS.map((building, i) => (
         <RigidBody
           key={`building-${i}`}
           type="fixed"
           colliders="cuboid"
           position={building.position}
-          rotation={building.rotation ?? [0, 0, 0]}
+          rotation={building.rotation}
         >
           <KenneyAsset
             model={building.model}
@@ -117,8 +140,9 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
           Small/medium props: no collider (per spec — papers,
           cups, small items pass through). Interactive props
           get a name tag so InteractiveProps.tsx can raycast them.
+          Projected onto sphere surface.
       ──────────────────────────────────────────────── */}
-      {PROP_LOCATIONS.map((prop) => (
+      {SPHERE_PROPS.map((prop) => (
         <group
           key={prop.id}
           name={prop.interactive ? `interactive-${prop.id}` : prop.id}
@@ -136,7 +160,7 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
       ))}
 
       {/* ── NPCS ─────────────────────────────────────── */}
-      {NPC_LOCATIONS.map((npc) => (
+      {SPHERE_NPCS.map((npc) => (
         <NPCCharacter key={npc.id} npc={npc} gradientMap={gradientMap} />
       ))}
     </group>

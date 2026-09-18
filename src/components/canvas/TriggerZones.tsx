@@ -5,10 +5,9 @@ import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { useWorldStore } from '@/store/useWorldStore'
 import { ZONE_DIALOGUES, calcDialogueDuration } from '@/lib/dialogue'
 import { DISTRICT_SENSOR_HALF_EXTENT } from '@/lib/constants'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
-
-
+import { flatToSphere } from '@/lib/surfacePlacement'
 
 
 export default function TriggerZones() {
@@ -29,13 +28,26 @@ export default function TriggerZones() {
     }
   }, [])
 
+  // Pre-compute sphere-projected sensor positions
+  const sphereDistricts = useMemo(() => {
+    return Object.values(WORLD_COORDINATES).map((district) => {
+      const { position, quaternion } = flatToSphere(
+        district.sensorPoint[0],
+        district.sensorPoint[2],
+        district.sensorPoint[1]
+      )
+      return { ...district, spherePosition: position, sphereQuaternion: quaternion }
+    })
+  }, [])
+
   return (
     <>
-      {Object.values(WORLD_COORDINATES).map((district) => (
+      {sphereDistricts.map((district) => (
         <RigidBody
           key={district.path}
           type="fixed"
-          position={district.sensorPoint}
+          position={district.spherePosition}
+          quaternion={district.sphereQuaternion}
           sensor
         >
           <CuboidCollider
