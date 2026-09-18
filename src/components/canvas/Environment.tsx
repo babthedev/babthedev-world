@@ -13,6 +13,9 @@ import {
 import { mapToSphere, flatToSphere } from '@/lib/surfacePlacement'
 import NPCCharacter from './NPCCharacter'
 import FlickerLight from './FlickerLight'
+import DistrictGateways from './DistrictGateways'
+import InWorldSignage from './InWorldSignage'
+import RoadMarkings from './RoadMarkings'
 
 interface EnvironmentProps {
   gradientMap: Texture
@@ -186,6 +189,15 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
       {SPHERE_NPCS.map((npc) => (
         <NPCCharacter key={npc.id} npc={npc} gradientMap={gradientMap} />
       ))}
+
+      {/* ── Q133: CONFORMAL ROAD MARKINGS ────────────── */}
+      <RoadMarkings />
+
+      {/* ── Q87: IN-WORLD SDF SIGNAGE ─────────────────── */}
+      <InWorldSignage />
+
+      {/* ── Q135: OVERHEAD DISTRICT GATEWAYS ─────────── */}
+      <DistrictGateways gradientMap={gradientMap} />
     </group>
   )
 }
