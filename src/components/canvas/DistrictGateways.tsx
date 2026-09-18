@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { Text, useGLTF } from '@react-three/drei'
 import { Mesh, MeshToonMaterial, Texture } from 'three'
 import { flatToSphere } from '@/lib/surfacePlacement'
+import { FEATURE_FLAGS } from '@/lib/featureFlags'
 
 interface DistrictGatewaysProps {
   gradientMap: Texture
@@ -133,50 +134,81 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
         </Text>
       </group>
 
-      {/* ── ORYZON RESTRICTED SECURITY GATEWAY ──────────────── */}
+      {/* ── ORYZON GATEWAY (Branch on FEATURE_FLAGS.ORYZON_OPEN) ─── */}
       <group position={oryzonGate.position} quaternion={oryzonGate.quaternion}>
-        {/* Barricade across road */}
-        <primitive
-          object={barrierGlb.scene.clone()}
-          position={[-2.2, 0, 0]}
-          scale={[1.2, 1.2, 1.2]}
-        />
-        <primitive
-          object={barrierGlb.scene.clone()}
-          position={[0, 0, 0]}
-          scale={[1.2, 1.2, 1.2]}
-        />
-        <primitive
-          object={barrierGlb.scene.clone()}
-          position={[2.2, 0, 0]}
-          scale={[1.2, 1.2, 1.2]}
-        />
+        {!FEATURE_FLAGS.ORYZON_OPEN ? (
+          <>
+            {/* Barricade across road */}
+            <primitive
+              object={barrierGlb.scene.clone()}
+              position={[-2.2, 0, 0]}
+              scale={[1.2, 1.2, 1.2]}
+            />
+            <primitive
+              object={barrierGlb.scene.clone()}
+              position={[0, 0, 0]}
+              scale={[1.2, 1.2, 1.2]}
+            />
+            <primitive
+              object={barrierGlb.scene.clone()}
+              position={[2.2, 0, 0]}
+              scale={[1.2, 1.2, 1.2]}
+            />
 
-        {/* Danger Warning Signboard */}
-        <mesh position={[0, 2.2, 0]} material={stoneMaterial}>
-          <boxGeometry args={[4.4, 0.7, 0.1]} />
-        </mesh>
+            {/* Danger Warning Signboard */}
+            <mesh position={[0, 2.2, 0]} material={stoneMaterial}>
+              <boxGeometry args={[4.4, 0.7, 0.1]} />
+            </mesh>
 
-        <Text
-          position={[0, 2.3, 0.08]}
-          fontSize={0.24}
-          color="#FFDD55"
-          anchorX="center"
-          anchorY="middle"
-          letterSpacing={0.18}
-        >
-          ORYZON
-        </Text>
-        <Text
-          position={[0, 2.05, 0.08]}
-          fontSize={0.12}
-          color="#FF5555"
-          anchorX="center"
-          anchorY="middle"
-          letterSpacing={0.12}
-        >
-          RESTRICTED — UNDER CONSTRUCTION
-        </Text>
+            <Text
+              position={[0, 2.3, 0.08]}
+              fontSize={0.24}
+              color="#FFDD55"
+              anchorX="center"
+              anchorY="middle"
+              letterSpacing={0.18}
+            >
+              ORYZON
+            </Text>
+            <Text
+              position={[0, 2.05, 0.08]}
+              fontSize={0.12}
+              color="#FF5555"
+              anchorX="center"
+              anchorY="middle"
+              letterSpacing={0.12}
+            >
+              RESTRICTED — UNDER CONSTRUCTION
+            </Text>
+          </>
+        ) : (
+          <>
+            {/* Open Celebratory Archway */}
+            <mesh position={[0, 2.2, 0]} material={stoneMaterial}>
+              <boxGeometry args={[4.4, 0.7, 0.1]} />
+            </mesh>
+            <Text
+              position={[0, 2.3, 0.08]}
+              fontSize={0.24}
+              color="#FAF9F5"
+              anchorX="center"
+              anchorY="middle"
+              letterSpacing={0.18}
+            >
+              ORYZON
+            </Text>
+            <Text
+              position={[0, 2.05, 0.08]}
+              fontSize={0.12}
+              color="#88FF88"
+              anchorX="center"
+              anchorY="middle"
+              letterSpacing={0.12}
+            >
+              NOW OPEN — THE VENTURE
+            </Text>
+          </>
+        )}
       </group>
     </group>
   )

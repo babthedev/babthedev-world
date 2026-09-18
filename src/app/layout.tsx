@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter, Merriweather } from 'next/font/google'
 import GlobalCanvas from '@/components/GlobalCanvas'
+import ServiceWorkerRegistration from '@/components/ServiceWorkerRegistration'
 import './globals.css'
 
 const inter = Inter({
@@ -36,6 +37,7 @@ export default function RootLayout({
             and SSR fallback content; the actual visible experience
             is entirely inside GlobalCanvas. */}
         <GlobalCanvas />
+        <ServiceWorkerRegistration />
         <div className="sr-only">{children}</div>
       </body>
     </html>

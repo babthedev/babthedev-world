@@ -7,6 +7,7 @@ import { useWorldStore } from '@/store/useWorldStore'
 import { ORYZON_GATE_POSITION } from '@/lib/worldCoordinates'
 import { SPECIAL_DIALOGUES, calcDialogueDuration } from '@/lib/dialogue'
 import { flatToSphere } from '@/lib/surfacePlacement'
+import { FEATURE_FLAGS } from '@/lib/featureFlags'
 
 const GATE_TRIGGER_RADIUS = 6
 const _visitorVec = new Vector3()
@@ -32,7 +33,9 @@ export default function OryzonGate() {
 
     if (dist < GATE_TRIGGER_RADIUS && !hasTriggered.current) {
       hasTriggered.current = true
-      const text = SPECIAL_DIALOGUES.oryzon_gate.text
+      const text = FEATURE_FLAGS.ORYZON_OPEN
+        ? "Oryzon is officially open. Come see what we've built."
+        : SPECIAL_DIALOGUES.oryzon_gate.text
       setCurrentDialogue(text)
       setTimeout(() => setCurrentDialogue(null), calcDialogueDuration(text))
     }
