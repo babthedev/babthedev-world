@@ -72,6 +72,8 @@ interface ResilienceSlice {
 interface TransitionSlice {
   irisPhase: 'idle' | 'closing' | 'opening'
   triggerIrisTransition: (onMidpoint?: () => void) => void
+  cameraImpulse: number  // Q145: increments to trigger micro-camera punch
+  triggerCameraImpulse: () => void
 }
 
 // ─── COMBINED STORE ───────────────────────────────────────
@@ -141,7 +143,15 @@ export const useWorldStore = create<WorldStore>((set) => ({
   currentDistrict: '/',
   districtLabelVisible: false,
   nearbyPropId: null,
-  setActivePanel: (id) => set({ activePanel: id, isReading: id !== null }),
+  setActivePanel: (id) => set((s) => {
+    // Q145: Trigger micro-camera impulse when closing a panel
+    const closing = id === null && s.activePanel !== null
+    return {
+      activePanel: id,
+      isReading: id !== null,
+      ...(closing ? { cameraImpulse: s.cameraImpulse + 1 } : {}),
+    }
+  }),
   setIsReading: (v) => set({ isReading: v }),
   setCurrentDistrict: (d) => set({ currentDistrict: d }),
   setDistrictLabelVisible: (v) => set({ districtLabelVisible: v }),
@@ -165,4 +175,9 @@ export const useWorldStore = create<WorldStore>((set) => ({
       }, 360)
     }, 320)
   },
+
+  // Q145: Micro-camera impulse
+  cameraImpulse: 0,
+  triggerCameraImpulse: () =>
+    set((s) => ({ cameraImpulse: s.cameraImpulse + 1 })),
 }))

@@ -5,7 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
 import { Vector3, MathUtils, Raycaster, Mesh, MeshToonMaterial } from 'three'
 import { useWorldStore } from '@/store/useWorldStore'
-import { CAMERA_HEIGHT, CAMERA_BACK, CAMERA_LERP } from '@/lib/constants'
+import { CAMERA_HEIGHT, CAMERA_BACK, CAMERA_LERP, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX, CAMERA_IMPULSE } from '@/lib/constants'
 import { getSurfaceNormal, getTangentBasis } from '@/lib/sphereMath'
 
 // Pre-allocated vectors — avoids GC pressure inside useFrame
@@ -32,6 +32,14 @@ export default function CameraController() {
   const smoothedAngle = useRef(0)
   const dialogueGlide = useRef(0)
   const arrivalElevation = useRef(0)
+
+  // Q142: Pitch angle tracking (vertical orbit offset relative to tangent plane)
+  const pitchAngle = useRef(0)
+
+  // Q145: Micro-camera impulse — 0.03m directional punch on prop/panel interactions
+  const cameraImpulse = useWorldStore((state) => state.cameraImpulse)
+  const lastImpulse = useRef(0)
+  const impulseOffset = useRef(0)
 
   const raycaster = useRef(new Raycaster())
   const fadedMeshes = useRef<Set<Mesh>>(new Set())
@@ -75,6 +83,20 @@ export default function CameraController() {
     const dialogueAngleOffset = dialogueGlide.current * 0.35
     const a = smoothedAngle.current + dialogueAngleOffset
 
+    // ── Q142: PITCH CLAMPING ────────────────────────────
+    // Clamp vertical orbit angle to -15° (down) to +60° (up) relative to tangent plane
+    pitchAngle.current = MathUtils.clamp(pitchAngle.current, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX)
+    const pitchElevation = Math.sin(pitchAngle.current) * targetDist
+    const pitchFlatten = Math.cos(pitchAngle.current)
+
+    // ── Q145: MICRO-CAMERA IMPULSE (0.03m, 80ms) ───────
+    // Triggers on panel close or prop activation; decays exponentially
+    if (cameraImpulse !== lastImpulse.current) {
+      lastImpulse.current = cameraImpulse
+      impulseOffset.current = CAMERA_IMPULSE
+    }
+    impulseOffset.current = MathUtils.lerp(impulseOffset.current, 0, 12 * delta)
+
     // "Behind" direction in tangent plane:
     _behindDir
       .copy(tangentForward).multiplyScalar(-Math.cos(a))
@@ -86,10 +108,10 @@ export default function CameraController() {
       ? tangentRight.clone().multiplyScalar(-1.5)
       : new Vector3(0, 0, 0)
 
-    // Camera position:
+    // Camera position: behind + height + pitch + impulse
     _desired.set(vx, vy, vz)
-      .add(_behindDir.clone().multiplyScalar(targetDist))
-      .add(_normal.clone().multiplyScalar(CAMERA_HEIGHT + arrivalElevation.current))
+      .add(_behindDir.clone().multiplyScalar(targetDist * pitchFlatten))
+      .add(_normal.clone().multiplyScalar(CAMERA_HEIGHT + arrivalElevation.current + pitchElevation + impulseOffset.current))
       .add(panShift)
 
     // Look at visitor's mid-body (1 unit above position along normal)

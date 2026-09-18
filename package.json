@@ -12,7 +12,9 @@
     "pre-commit": "tsx scripts/validate-content.ts && tsx src/lib/__tests__/sphereMath.test.ts && tsc --noEmit",
     "build": "tsx scripts/validate-content.ts && tsx scripts/generate-rss.ts && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "assets:optimize": "node scripts/optimize-assets.mjs",
+    "assets:budget": "node scripts/check-asset-budget.mjs"
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.4",

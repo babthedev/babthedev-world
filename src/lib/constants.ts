@@ -24,6 +24,9 @@ export const CAMERA_FOV = 60
 export const CAMERA_LERP = 5
 export const CAMERA_NEAR = 0.1
 export const CAMERA_FAR = 200
+export const CAMERA_PITCH_MIN = -15 * (Math.PI / 180)   // Q142: -15° down
+export const CAMERA_PITCH_MAX = 60 * (Math.PI / 180)    // Q142: +60° up
+export const CAMERA_IMPULSE = 0.03                       // Q145: micro-impulse distance (m)
 
 // --- TOON SHADER ---
 export const TOON_GRADIENT_STEPS = new Uint8Array([80, 150, 210, 255])
