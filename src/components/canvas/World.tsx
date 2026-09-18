@@ -17,9 +17,11 @@ import {
   SPHERE_SEGMENTS,
 } from '@/lib/constants'
 import InteractiveProps from './InteractiveProps'
+import { useWorldStore } from '@/store/useWorldStore'
 
 
 export default function World() {
+  const debugMode = useWorldStore((s) => s.debugMode)
   // ── 4-STEP GRAYSCALE GRADIENT ─────────────────────────
   // This DataTexture is what converts MeshToonMaterial from
   // smooth shading into hard cel-shading steps.
@@ -40,8 +42,7 @@ export default function World() {
     <Physics
       timeStep="vary"
       gravity={[0, GRAVITY, 0]}
-      // Uncomment to see collider wireframes in dev:
-      // debug
+      debug={debugMode}
     >
       {/* ── RADIAL GRAVITY FIELD ──────────────────────
           Replaces the linear [0, -30, 0] gravity with

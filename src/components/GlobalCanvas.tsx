@@ -9,6 +9,7 @@ import HUDIcons from '@/ui/HUDIcons'
 import DistrictLabel from '@/ui/DistrictLabel'
 import ReadingPanel from '@/ui/ReadingPanel'
 import SphereCompass from '@/ui/SphereCompass'
+import DebugOverlay from '@/ui/DebugOverlay'
 import { useTourLogic } from '@/hooks/useTourLogic'
 
 export default function GlobalCanvas() {
@@ -52,6 +53,7 @@ export default function GlobalCanvas() {
       <ReadingPanel />
       <IntroDialogue />
       <SphereCompass />
+      <DebugOverlay />
     </div>
   )
 }

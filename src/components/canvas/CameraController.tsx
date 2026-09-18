@@ -2,6 +2,7 @@
 
 import { useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
+import { OrbitControls } from '@react-three/drei'
 import { Vector3, MathUtils, Raycaster, Mesh, MeshToonMaterial } from 'three'
 import { useWorldStore } from '@/store/useWorldStore'
 import { CAMERA_HEIGHT, CAMERA_BACK, CAMERA_LERP } from '@/lib/constants'
@@ -18,6 +19,7 @@ export default function CameraController() {
   const visitorPos = useWorldStore((state) => state.position)
   const facingAngle = useWorldStore((state) => state.facingAngle)
   const isReading = useWorldStore((state) => state.isReading)
+  const freeFlyMode = useWorldStore((state) => state.freeFlyMode)
 
   // Camera tracks its OWN smoothed angle — not the character's live angle.
   // This creates the "camera lags slightly behind the turn" feel
@@ -29,6 +31,8 @@ export default function CameraController() {
   const { scene } = useThree()
 
   useFrame((state, delta) => {
+    if (freeFlyMode) return
+
     const [vx, vy, vz] = visitorPos
     _posVec.set(vx, vy, vz)
 
@@ -119,6 +123,10 @@ export default function CameraController() {
     }
     fadedMeshes.current = currentlyBlocking
   })
+
+  if (freeFlyMode) {
+    return <OrbitControls makeDefault enableDamping dampingFactor={0.05} />
+  }
 
   return null
 }

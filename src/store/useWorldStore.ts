@@ -45,6 +45,15 @@ interface NPCSlice {
   setNpcDialogue: (text: string | null) => void
 }
 
+interface DebugSlice {
+  debugMode: boolean
+  freeFlyMode: boolean
+  setDebugMode: (v: boolean) => void
+  setFreeFlyMode: (v: boolean) => void
+  toggleDebugMode: () => void
+  toggleFreeFlyMode: () => void
+}
+
 // ─── COMBINED STORE ───────────────────────────────────────
 
 interface WorldStore
@@ -52,9 +61,17 @@ interface WorldStore
     TourSlice,
     PlayerSlice,
     UISlice,
-    NPCSlice {}
+    NPCSlice,
+    DebugSlice {}
 
 export const useWorldStore = create<WorldStore>((set) => ({
+  // Debug
+  debugMode: false,
+  freeFlyMode: false,
+  setDebugMode: (v) => set({ debugMode: v }),
+  setFreeFlyMode: (v) => set({ freeFlyMode: v }),
+  toggleDebugMode: () => set((s) => ({ debugMode: !s.debugMode })),
+  toggleFreeFlyMode: () => set((s) => ({ freeFlyMode: !s.freeFlyMode })),
 
   // Welcome
   introComplete: false,
