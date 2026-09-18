@@ -125,22 +125,27 @@ export default function CameraController() {
     raycaster.current.set(_lookAt, camRayDir)
     raycaster.current.far = maxCamDist
 
-    const hits = raycaster.current.intersectObjects(scene.children, true)
-    let closestBlockingDist = maxCamDist
-    for (const hit of hits) {
-      if (
-        hit.object instanceof Mesh &&
-        hit.object.name !== 'ground' &&
-        !hit.object.userData?.isCharacter
-      ) {
-        if (hit.distance < closestBlockingDist && hit.distance > 0.8) {
-          closestBlockingDist = Math.max(1.2, hit.distance - 0.3)
+    const buildingsGroup = scene.getObjectByName('buildings')
+    const occluders = buildingsGroup ? buildingsGroup.children : []
+
+    if (occluders.length > 0) {
+      const hits = raycaster.current.intersectObjects(occluders, true)
+      let closestBlockingDist = maxCamDist
+      for (const hit of hits) {
+        if (
+          hit.object instanceof Mesh &&
+          hit.object.name !== 'ground' &&
+          !hit.object.userData?.isCharacter
+        ) {
+          if (hit.distance < closestBlockingDist && hit.distance > 0.8) {
+            closestBlockingDist = Math.max(1.2, hit.distance - 0.3)
+          }
         }
       }
-    }
 
-    if (closestBlockingDist < maxCamDist) {
-      _desired.copy(_lookAt).add(camRayDir.clone().multiplyScalar(closestBlockingDist))
+      if (closestBlockingDist < maxCamDist) {
+        _desired.copy(_lookAt).add(camRayDir.clone().multiplyScalar(closestBlockingDist))
+      }
     }
 
     // Smooth camera position
@@ -153,39 +158,41 @@ export default function CameraController() {
 
     // ── OBJECT FADE-THROUGH ─────────────────────────────
     // Raycast from camera to player, fade objects blocking view
-    raycaster.current.set(
-      _lookAt,
-      _desired.clone().sub(_lookAt).normalize()
-    )
-    raycaster.current.far = _desired.distanceTo(_lookAt)
+    if (occluders.length > 0) {
+      raycaster.current.set(
+        _lookAt,
+        _desired.clone().sub(_lookAt).normalize()
+      )
+      raycaster.current.far = _desired.distanceTo(_lookAt)
 
-    const fadeHits = raycaster.current.intersectObjects(scene.children, true)
-    const currentlyBlocking = new Set<Mesh>()
+      const fadeHits = raycaster.current.intersectObjects(occluders, true)
+      const currentlyBlocking = new Set<Mesh>()
 
-    for (const hit of fadeHits) {
-      if (hit.object instanceof Mesh && hit.object.name !== 'ground') {
-        currentlyBlocking.add(hit.object)
-        const mat = hit.object.material as MeshToonMaterial
-        if (mat && mat.opacity !== 0.25) {
-          mat.transparent = true
-          mat.opacity = 0.25
-          mat.needsUpdate = true
+      for (const hit of fadeHits) {
+        if (hit.object instanceof Mesh && hit.object.name !== 'ground') {
+          currentlyBlocking.add(hit.object)
+          const mat = hit.object.material as MeshToonMaterial
+          if (mat && mat.opacity !== 0.25) {
+            mat.transparent = true
+            mat.opacity = 0.25
+            mat.needsUpdate = true
+          }
         }
       }
-    }
 
-    // Restore opacity on meshes no longer blocking
-    for (const mesh of fadedMeshes.current) {
-      if (!currentlyBlocking.has(mesh)) {
-        const mat = mesh.material as MeshToonMaterial
-        if (mat) {
-          mat.opacity = 1
-          mat.transparent = false
-          mat.needsUpdate = true
+      // Restore opacity on meshes no longer blocking
+      for (const mesh of fadedMeshes.current) {
+        if (!currentlyBlocking.has(mesh)) {
+          const mat = mesh.material as MeshToonMaterial
+          if (mat) {
+            mat.opacity = 1
+            mat.transparent = false
+            mat.needsUpdate = true
+          }
         }
       }
+      fadedMeshes.current = currentlyBlocking
     }
-    fadedMeshes.current = currentlyBlocking
   })
 
   if (freeFlyMode) {

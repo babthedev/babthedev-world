@@ -36,7 +36,7 @@ export const OUTLINE_DEPTH_THRESHOLD = 0.0008 // edge sensitivity
 
 // --- WORLD / PAPER PALETTE ---
 export const PAPER_BACKGROUND = '#F2F1EC'     // slightly warm off-white, not pure white
-export const GROUND_COLOR = '#E4E2D8'
+export const GROUND_COLOR = '#D4D1C3'         // distinct warm paper tone with visible horizon contrast
 export const INK_COLOR = '#0B0B0B'
 
 // --- CHARACTER COLORS ---
@@ -58,13 +58,13 @@ export const DISTRICT_SENSOR_HALF_EXTENT = 5
 
 // --- RENDERING ---
 export const MAX_PIXEL_RATIO = 1.5
-export const SHADOW_MAP_SIZE = 2048
-export const FOG_NEAR = 15
-export const FOG_FAR = 40
+export const SHADOW_MAP_SIZE = 1024
+export const FOG_NEAR = 35
+export const FOG_FAR = 90
 
 // --- AMBIENT LIGHT ---
-export const AMBIENT_INTENSITY = 0.4
-export const DIRECTIONAL_INTENSITY = 2.0
+export const AMBIENT_INTENSITY = 0.5
+export const DIRECTIONAL_INTENSITY = 1.1
 
 // --- UI ---
 export const PANEL_SLIDE_MS = 300

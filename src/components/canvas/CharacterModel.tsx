@@ -61,7 +61,7 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
       return 'npc'
     }, [characterType, url])
 
-    const { scene, animations } = useGLTF(
+    const gltf = useGLTF(
       url,
       undefined,
       undefined,
@@ -70,23 +70,28 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
             loader.register((parser: any) => new VRMLoaderPlugin(parser))
           }
         : undefined
-    )
+    ) as any
 
+    const scene = gltf.scene
+    const animations = gltf.animations
     const { actions, mixer: _mixer } = useAnimations(animations, scene)
 
     // ── VRM INITIALIZATION ────────────────────────────
     useEffect(() => {
-      if (!isVRM || !scene) return
+      if (!isVRM || !gltf) return
 
-      const vrmPlugin = scene.userData.vrm
+      const vrmPlugin = gltf.userData?.vrm || gltf.scene?.userData?.vrm
       if (vrmPlugin) {
         VRMUtils.removeUnnecessaryVertices(vrmPlugin.scene)
         VRMUtils.removeUnnecessaryJoints(vrmPlugin.scene)
+        if (vrmPlugin.meta?.metaVersion === '0') {
+          VRMUtils.rotateVRM0(vrmPlugin)
+        }
         setVrm(vrmPlugin)
       }
-    }, [scene, isVRM])
+    }, [gltf, isVRM])
 
-    // ── MATERIAL OVERRIDE ─────────────────────────────
+    // ── MATERIAL OVERRIDE & VRAM PURGE ─────────────────
     const toonMaterial = useMemo(
       () =>
         new MeshToonMaterial({
@@ -97,14 +102,27 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
     )
 
     useEffect(() => {
-      scene.traverse((child) => {
+      const targetScene = vrm ? vrm.scene : scene
+      if (!targetScene) return
+
+      targetScene.traverse((child: any) => {
         if (child instanceof Mesh || child instanceof SkinnedMesh) {
+          // Dispose original VRM textures to reclaim ~400MB VRAM per character
+          if (child.material && child.material !== toonMaterial) {
+            const mats = Array.isArray(child.material) ? child.material : [child.material]
+            for (const m of mats) {
+              m.map?.dispose?.()
+              m.normalMap?.dispose?.()
+              m.roughnessMap?.dispose?.()
+              m.dispose?.()
+            }
+          }
           child.castShadow = true
           child.receiveShadow = false
           child.material = toonMaterial
         }
       })
-    }, [scene, toonMaterial])
+    }, [scene, vrm, toonMaterial])
 
     // ── ANIMATION PLAYBACK (IF EMBEDDED CLIPS EXIST) ──
     useEffect(() => {
@@ -179,10 +197,16 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
         if (bones.rightLowerLeg)
           bones.rightLowerLeg.rotation.x = Math.max(0, Math.sin(t)) * 0.5
 
-        if (bones.leftUpperArm) bones.leftUpperArm.rotation.x = -armSwing
-        if (bones.rightUpperArm) bones.rightUpperArm.rotation.x = armSwing
-        if (bones.leftLowerArm) bones.leftLowerArm.rotation.x = 0.25
-        if (bones.rightLowerArm) bones.rightLowerArm.rotation.x = 0.25
+        if (bones.leftUpperArm) {
+          bones.leftUpperArm.rotation.x = -armSwing
+          bones.leftUpperArm.rotation.z = -1.22
+        }
+        if (bones.rightUpperArm) {
+          bones.rightUpperArm.rotation.x = armSwing
+          bones.rightUpperArm.rotation.z = 1.22
+        }
+        if (bones.leftLowerArm) bones.leftLowerArm.rotation.x = 0.3
+        if (bones.rightLowerArm) bones.rightLowerArm.rotation.x = 0.3
 
         if (bones.hips) bones.hips.position.y = Math.abs(Math.sin(t)) * 0.035
         if (bones.spine) bones.spine.rotation.y = Math.sin(t) * 0.04
@@ -196,8 +220,16 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
         if (bones.rightUpperLeg) bones.rightUpperLeg.rotation.x = -1.45
         if (bones.leftLowerLeg) bones.leftLowerLeg.rotation.x = 1.48
         if (bones.rightLowerLeg) bones.rightLowerLeg.rotation.x = 1.48
-        if (bones.leftUpperArm) bones.leftUpperArm.rotation.x = -0.25
-        if (bones.rightUpperArm) bones.rightUpperArm.rotation.x = -0.25
+        if (bones.leftUpperArm) {
+          bones.leftUpperArm.rotation.x = -0.3
+          bones.leftUpperArm.rotation.z = -1.15
+        }
+        if (bones.rightUpperArm) {
+          bones.rightUpperArm.rotation.x = -0.3
+          bones.rightUpperArm.rotation.z = 1.15
+        }
+        if (bones.leftLowerArm) bones.leftLowerArm.rotation.x = 1.25
+        if (bones.rightLowerArm) bones.rightLowerArm.rotation.x = 1.25
         if (bones.spine) bones.spine.rotation.x = 0.08
       } else {
         // Return legs and hips to neutral standing pose
@@ -221,23 +253,23 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
         if (bones.chest) bones.chest.rotation.x = breath * 0.02
         if (bones.spine) bones.spine.rotation.x = breath * 0.012
 
-        // Default neutral arms when no secondary idle is overriding
+        // Default neutral arms hanging relaxed at the sides (VRM upper arms point horizontal at 0, so rotate ~1.25 rad down)
         if (!activeSecondaryRef.current) {
           if (bones.leftUpperArm) {
-            bones.leftUpperArm.rotation.x = MathUtils.damp(bones.leftUpperArm.rotation.x, 0, 8, dt)
+            bones.leftUpperArm.rotation.x = MathUtils.damp(bones.leftUpperArm.rotation.x, 0.05, 8, dt)
             bones.leftUpperArm.rotation.y = MathUtils.damp(bones.leftUpperArm.rotation.y, 0, 8, dt)
-            bones.leftUpperArm.rotation.z = MathUtils.damp(bones.leftUpperArm.rotation.z, -0.06 + breath * 0.01, 8, dt)
+            bones.leftUpperArm.rotation.z = MathUtils.damp(bones.leftUpperArm.rotation.z, -1.25 + breath * 0.02, 8, dt)
           }
           if (bones.rightUpperArm) {
-            bones.rightUpperArm.rotation.x = MathUtils.damp(bones.rightUpperArm.rotation.x, 0, 8, dt)
+            bones.rightUpperArm.rotation.x = MathUtils.damp(bones.rightUpperArm.rotation.x, 0.05, 8, dt)
             bones.rightUpperArm.rotation.y = MathUtils.damp(bones.rightUpperArm.rotation.y, 0, 8, dt)
-            bones.rightUpperArm.rotation.z = MathUtils.damp(bones.rightUpperArm.rotation.z, 0.06 - breath * 0.01, 8, dt)
+            bones.rightUpperArm.rotation.z = MathUtils.damp(bones.rightUpperArm.rotation.z, 1.25 - breath * 0.02, 8, dt)
           }
           if (bones.leftLowerArm) {
-            bones.leftLowerArm.rotation.x = MathUtils.damp(bones.leftLowerArm.rotation.x, 0.08, 8, dt)
+            bones.leftLowerArm.rotation.x = MathUtils.damp(bones.leftLowerArm.rotation.x, 0.15, 8, dt)
           }
           if (bones.rightLowerArm) {
-            bones.rightLowerArm.rotation.x = MathUtils.damp(bones.rightLowerArm.rotation.x, 0.08, 8, dt)
+            bones.rightLowerArm.rotation.x = MathUtils.damp(bones.rightLowerArm.rotation.x, 0.15, 8, dt)
           }
         }
       }
@@ -286,12 +318,12 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
           if (currentSec.id === 'watch') {
             // Abdulrahman: Checks watch on left wrist
             if (bones.leftUpperArm) {
-              bones.leftUpperArm.rotation.x = MathUtils.lerp(0, -0.65, weight)
+              bones.leftUpperArm.rotation.x = MathUtils.lerp(0.05, -0.75, weight)
               bones.leftUpperArm.rotation.y = MathUtils.lerp(0, 0.45, weight)
-              bones.leftUpperArm.rotation.z = MathUtils.lerp(0, 0.2, weight)
+              bones.leftUpperArm.rotation.z = MathUtils.lerp(-1.25, -0.4, weight)
             }
             if (bones.leftLowerArm) {
-              bones.leftLowerArm.rotation.x = MathUtils.lerp(0.08, 1.35, weight)
+              bones.leftLowerArm.rotation.x = MathUtils.lerp(0.15, 1.35, weight)
             }
             if (bones.head && !lookAtTarget) {
               bones.head.rotation.x = MathUtils.lerp(0, 0.45, weight)
@@ -310,12 +342,12 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
           } else if (currentSec.id === 'stretch') {
             // Visitor: Stretches arms and arches spine back
             if (bones.leftUpperArm) {
-              bones.leftUpperArm.rotation.x = MathUtils.lerp(0, 0.35, weight)
-              bones.leftUpperArm.rotation.z = MathUtils.lerp(-0.06, -0.55, weight)
+              bones.leftUpperArm.rotation.x = MathUtils.lerp(0.05, 0.35, weight)
+              bones.leftUpperArm.rotation.z = MathUtils.lerp(-1.25, -0.65, weight)
             }
             if (bones.rightUpperArm) {
-              bones.rightUpperArm.rotation.x = MathUtils.lerp(0, 0.35, weight)
-              bones.rightUpperArm.rotation.z = MathUtils.lerp(0.06, 0.55, weight)
+              bones.rightUpperArm.rotation.x = MathUtils.lerp(0.05, 0.35, weight)
+              bones.rightUpperArm.rotation.z = MathUtils.lerp(1.25, 0.65, weight)
             }
             if (bones.spine) {
               bones.spine.rotation.x = MathUtils.lerp(0, -0.18, weight)
@@ -401,7 +433,7 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
           ref.current = node
         }
       }}>
-        <primitive object={scene} />
+        <primitive object={vrm ? vrm.scene : scene} />
       </group>
     )
   }

@@ -87,19 +87,21 @@ function KenneyAsset({
     return new MeshToonMaterial({ color, gradientMap })
   }, [color, gradientMap, isLamp])
 
-  useEffect(() => {
-    scene.traverse((child) => {
+  const clonedScene = useMemo(() => {
+    const clone = scene.clone(true)
+    clone.traverse((child) => {
       if (child instanceof Mesh) {
         child.material = material
         child.castShadow = castShadow
         child.receiveShadow = receiveShadow
       }
     })
+    return clone
   }, [scene, material, castShadow, receiveShadow])
 
   return (
     <primitive
-      object={scene.clone()}
+      object={clonedScene}
       position={position}
       rotation={rotation}
       scale={scale}
@@ -144,26 +146,28 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
           approximation so characters can't walk through walls.
           Q132: Scale jitter (0.9-1.2x) for varied architectural silhouettes.
       ──────────────────────────────────────────────── */}
-      {SPHERE_BUILDINGS.map((building, i) => {
-        const buildingScale = building.scale ?? (0.9 + ((i * 13) % 7) * 0.05)
-        return (
-          <RigidBody
-            key={`building-${i}`}
-            type="fixed"
-            colliders="cuboid"
-            position={building.position}
-            rotation={building.rotation}
-          >
-            <KenneyAsset
-              model={building.model}
-              position={[0, 0, 0]}
-              scale={buildingScale}
-              gradientMap={gradientMap}
-              color="#141414"
-            />
-          </RigidBody>
-        )
-      })}
+      <group name="buildings">
+        {SPHERE_BUILDINGS.map((building, i) => {
+          const buildingScale = building.scale ?? (0.9 + ((i * 13) % 7) * 0.05)
+          return (
+            <RigidBody
+              key={`building-${i}`}
+              type="fixed"
+              colliders="cuboid"
+              position={building.position}
+              rotation={building.rotation}
+            >
+              <KenneyAsset
+                model={building.model}
+                position={[0, 0, 0]}
+                scale={buildingScale}
+                gradientMap={gradientMap}
+                color="#141414"
+              />
+            </RigidBody>
+          )
+        })}
+      </group>
 
       {/* ── PROPS ────────────────────────────────────
           Small/medium props: no collider (per spec — papers,

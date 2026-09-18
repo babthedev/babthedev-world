@@ -27,7 +27,7 @@ import {
   getTangentBasis,
   projectOntoTangentPlane,
 } from '@/lib/sphereMath'
-import { flatToSphere } from '@/lib/surfacePlacement'
+import { flatToSphere, mapSpawnToSphere } from '@/lib/surfacePlacement'
 import { emitFootstepPuff } from './FootstepPuffs'
 import { useTelemetry } from '@/hooks/useTelemetry'
 
@@ -93,16 +93,21 @@ export default function AbdulrahmanController() {
     const path = window.location.pathname as DistrictName
     const coord = WORLD_COORDINATES[path]
     if (coord) {
+      const spawn = mapSpawnToSphere(
+        [coord.spawnPoint[0] + CHARACTER_OFFSET_X, coord.spawnPoint[1], coord.spawnPoint[2]],
+        CHARACTER_CAPSULE_HEIGHT
+      )
       bodyRef.current.setTranslation(
         {
-          x: coord.spawnPoint[0] + CHARACTER_OFFSET_X,
-          y: coord.spawnPoint[1],
-          z: coord.spawnPoint[2],
+          x: spawn[0],
+          y: spawn[1],
+          z: spawn[2],
         },
         true
       )
+      setAbdulrahmanPosition(spawn)
     }
-  }, [])
+  }, [setAbdulrahmanPosition])
 
   // ── DIALOGUE PLAYBACK ON WAYPOINT CHANGE ───────────
   useEffect(() => {

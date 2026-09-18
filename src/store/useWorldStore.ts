@@ -1,6 +1,12 @@
 import { create } from 'zustand'
+import {
+  PLANET_RADIUS,
+  CHARACTER_CAPSULE_HEIGHT,
+  CHARACTER_OFFSET_X,
+} from '@/lib/constants'
 
-// ─── SLICES ───────────────────────────────────────────────
+// Initial surface spawn on the north pole
+const INITIAL_SURFACE_Y = PLANET_RADIUS + CHARACTER_CAPSULE_HEIGHT
 
 interface WelcomeSlice {
   introComplete: boolean
@@ -129,9 +135,9 @@ export const useWorldStore = create<WorldStore>((set) => ({
   triggerCraneFlyover: () =>
     set((s) => ({ craneFlyoverTrigger: s.craneFlyoverTrigger + 1 })),
 
-  // Player
-  position: [0, 0, 0],
-  abdulrahmanPosition: [0.7, 0, 0],
+  // Player — spawned on sphere surface at the North pole
+  position: [0, INITIAL_SURFACE_Y, 0],
+  abdulrahmanPosition: [CHARACTER_OFFSET_X, INITIAL_SURFACE_Y, 0],
   facingAngle: 0,
   setPosition: (pos) => set({ position: pos }),
   setAbdulrahmanPosition: (pos) => set({ abdulrahmanPosition: pos }),

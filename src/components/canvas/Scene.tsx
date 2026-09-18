@@ -79,9 +79,9 @@ export default function Scene() {
           Slightly reduced directional intensity vs the dark-bg version —
           bright light on a light background washes out the toon steps otherwise.
       ──────────────────────────────────────────────────── */}
-      <ambientLight intensity={AMBIENT_INTENSITY + 0.15} color="#FFFFFF" />
+      <ambientLight intensity={AMBIENT_INTENSITY} color="#FFFFFF" />
       <directionalLight
-        position={[15, 25, -10]}
+        position={[25, 60, -20]}
         intensity={DIRECTIONAL_INTENSITY}
         color="#FFFFFF"
         castShadow

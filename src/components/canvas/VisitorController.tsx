@@ -27,6 +27,7 @@ import {
   getTangentBasis,
   projectOntoTangentPlane,
 } from '@/lib/sphereMath'
+import { mapSpawnToSphere } from '@/lib/surfacePlacement'
 import { emitFootstepPuff } from './FootstepPuffs'
 
 // Shared gradient texture — created once here, passed down.
@@ -89,12 +90,14 @@ export default function VisitorController() {
     const path = window.location.pathname as DistrictName
     const coord = WORLD_COORDINATES[path]
     if (coord) {
+      const spawn = mapSpawnToSphere(coord.spawnPoint, CHARACTER_CAPSULE_HEIGHT)
       bodyRef.current.setTranslation(
-        { x: coord.spawnPoint[0], y: coord.spawnPoint[1], z: coord.spawnPoint[2] },
+        { x: spawn[0], y: spawn[1], z: spawn[2] },
         true
       )
+      setPosition(spawn)
     }
-  }, [])
+  }, [setPosition])
 
   useFrame((state, delta) => {
     if (!bodyRef.current || !modelRef.current) return
