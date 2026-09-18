@@ -62,6 +62,7 @@ export default function Scene() {
         antialias: false,
         alpha: false,
         powerPreference: 'high-performance',
+        preserveDrawingBuffer: true,
       }}
       dpr={
         typeof window !== 'undefined'

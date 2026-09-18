@@ -17,6 +17,8 @@ import DistrictGateways from './DistrictGateways'
 import InWorldSignage from './InWorldSignage'
 import RoadMarkings from './RoadMarkings'
 import PhysicalProps from './PhysicalProps'
+import WindStreaks from './WindStreaks'
+import EasterEggs from './EasterEggs'
 
 interface EnvironmentProps {
   gradientMap: Texture
@@ -202,6 +204,12 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
 
       {/* ── Q112-Q115: PHYSICAL 3D CONTENT PROPS ────── */}
       <PhysicalProps gradientMap={gradientMap} />
+
+      {/* ── Q103: ENVIRONMENTAL WIND STREAKS ─────────── */}
+      <WindStreaks />
+
+      {/* ── Q105: ENVIRONMENTAL EASTER EGGS ───────────── */}
+      <EasterEggs gradientMap={gradientMap} />
     </group>
   )
 }

@@ -334,6 +334,84 @@ export function useAudioManager() {
     osc.stop(now + 0.025)
   }, [])
 
+  // ── Q103: ENVIRONMENTAL WIND WHISPER (faint filtered noise sweep) ──
+  const playWindWhisper = useCallback(() => {
+    if (mutedRef.current || !unlockedRef.current) return
+    const graph = getAudioGraph()
+    if (!graph || graph.ctx.state !== 'running') return
+
+    const ctx = graph.ctx
+    const now = ctx.currentTime
+
+    // Generate 3.5s smooth noise buffer
+    const duration = 3.5
+    const bufferSize = Math.floor(ctx.sampleRate * duration)
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < bufferSize; i++) {
+      // Pinkish noise filter approximation
+      data[i] = (Math.random() * 2 - 1) * 0.7
+    }
+
+    const noise = ctx.createBufferSource()
+    noise.buffer = buffer
+
+    // Soft bandpass filter sweeping from 320Hz -> 820Hz -> 280Hz
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.setValueAtTime(320, now)
+    filter.frequency.exponentialRampToValueAtTime(820, now + 1.4)
+    filter.frequency.exponentialRampToValueAtTime(280, now + duration)
+    filter.Q.value = 2.2
+
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(0.001, now)
+    gain.gain.linearRampToValueAtTime(0.045, now + 1.2)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + duration)
+
+    noise.connect(filter)
+    filter.connect(gain)
+    gain.connect(graph.masterGain)
+
+    noise.start(now)
+  }, [])
+
+  // ── Q104: MECHANICAL CAMERA SHUTTER & INK STAMP CLICK ────────
+  const playShutter = useCallback(() => {
+    if (mutedRef.current || !unlockedRef.current) return
+    const graph = getAudioGraph()
+    if (!graph || graph.ctx.state !== 'running') return
+
+    const ctx = graph.ctx
+    const now = ctx.currentTime
+
+    // Shutter blade opening click
+    const osc1 = ctx.createOscillator()
+    const gain1 = ctx.createGain()
+    osc1.type = 'triangle'
+    osc1.frequency.setValueAtTime(1400, now)
+    osc1.frequency.exponentialRampToValueAtTime(180, now + 0.02)
+    gain1.gain.setValueAtTime(0.18, now)
+    gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.02)
+    osc1.connect(gain1)
+    gain1.connect(graph.masterGain)
+    osc1.start(now)
+    osc1.stop(now + 0.025)
+
+    // Secondary shutter mirror return (65ms later)
+    const osc2 = ctx.createOscillator()
+    const gain2 = ctx.createGain()
+    osc2.type = 'square'
+    osc2.frequency.setValueAtTime(800, now + 0.065)
+    osc2.frequency.exponentialRampToValueAtTime(120, now + 0.09)
+    gain2.gain.setValueAtTime(0.14, now + 0.065)
+    gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.095)
+    osc2.connect(gain2)
+    gain2.connect(graph.masterGain)
+    osc2.start(now + 0.065)
+    osc2.stop(now + 0.1)
+  }, [])
+
   return {
     setMuted,
     setDistrict,
@@ -344,5 +422,7 @@ export function useAudioManager() {
     updateElectricalHum,
     playPageTurn,
     playTypewriterTap,
+    playWindWhisper,
+    playShutter,
   }
 }

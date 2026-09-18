@@ -199,6 +199,14 @@ export const SPECIAL_DIALOGUES = {
     text: "This isn't on the map.",
     gesture: 'idle' as GestureType,
   },
+  sketch_pad: {
+    text: "Ah, you found my old field sketchbook! Most of these architectural ideas started as messy pencil scribbles.",
+    gesture: 'acknowledge' as GestureType,
+  },
+  crane_nest: {
+    text: "Look at that—the orbital cranes made a nest up here! They seem to like the view of the cafe terrace.",
+    gesture: 'point' as GestureType,
+  },
 }
 
 // ─── UTILITY ──────────────────────────────────────────────

@@ -47,3 +47,11 @@ body {
 ::-webkit-scrollbar-thumb:hover {
   background: var(--color-grey-light);
 }
+
+/* Q104: Clean Photo Mode capture hiding UI overlays */
+body.clean-capture-active .fixed,
+body.clean-capture-active nav,
+body.clean-capture-active [data-hud] {
+  visibility: hidden !important;
+  opacity: 0 !important;
+}
