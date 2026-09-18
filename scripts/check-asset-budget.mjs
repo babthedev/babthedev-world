@@ -14,12 +14,14 @@ import { join, relative } from 'node:path'
 
 const PUBLIC_DIR = join(process.cwd(), 'public')
 const BUDGET_BYTES = 12 * 1024 * 1024  // 12MB hard cap
+const EXCLUDE_DIRS = new Set(['reference'])  // dev-only assets
 
 function walkDir(dir) {
   const results = []
   try {
     const entries = readdirSync(dir)
     for (const entry of entries) {
+      if (EXCLUDE_DIRS.has(entry)) continue
       const fullPath = join(dir, entry)
       const stat = statSync(fullPath)
       if (stat.isDirectory()) {

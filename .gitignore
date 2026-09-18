@@ -40,3 +40,10 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 /inspirations from messenger
+
+# development reference assets (not for production)
+/public/reference/
+
+# playwright
+/test-results/
+/playwright-report/

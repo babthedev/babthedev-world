@@ -14,7 +14,8 @@
     "start": "next start",
     "lint": "eslint",
     "assets:optimize": "node scripts/optimize-assets.mjs",
-    "assets:budget": "node scripts/check-asset-budget.mjs"
+    "assets:budget": "node scripts/check-asset-budget.mjs",
+    "verify:dod": "node scripts/verify-dod.mjs"
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.4",
