@@ -4,8 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "preinstall": "npx only-allow pnpm",
     "validate:content": "tsx scripts/validate-content.ts",
     "generate:rss": "tsx scripts/generate-rss.ts",
+    "test": "tsx src/lib/__tests__/sphereMath.test.ts",
+    "test:visual": "playwright test",
+    "pre-commit": "tsx scripts/validate-content.ts && tsx src/lib/__tests__/sphereMath.test.ts && tsc --noEmit",
     "build": "tsx scripts/validate-content.ts && tsx scripts/generate-rss.ts && next build",
     "start": "next start",
     "lint": "eslint"
@@ -30,6 +34,7 @@
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -39,5 +44,14 @@
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "eslint --fix"
+    ],
+    "src/content/**/*.mdx": [
+      "tsx scripts/validate-content.ts"
+    ]
   }
 }
