@@ -10,6 +10,7 @@ import CharacterModel from './CharacterModel'
 import { useCharacterAnimations } from '@/hooks/useCharacterAnimations'
 import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
 import { useMobileControls } from '@/hooks/useMobileControls'
+import { useAudioManager } from '@/hooks/useAudioManager'
 import {
   VISITOR_SPEED,
   VISITOR_BOOST_SPEED,
@@ -72,10 +73,14 @@ export default function VisitorController() {
   const animStateRef = useRef<'idle' | 'walk'>('idle')
   const [animName, setAnimName] = useState<'idle' | 'walk'>('idle')
 
+  const { playFootstep } = useAudioManager()
+
   // Track the character's heading (yaw) on the tangent plane
   const yawRef = useRef(0)
   // Track continuous locomotion time for subtle speed boost (Q18)
   const movingDurationRef = useRef(0)
+  // Track accumulated stride distance for footsteps (Q139)
+  const footstepDistanceRef = useRef(0)
 
   // ── DEEP LINK SPAWN ────────────────────────────────
   useEffect(() => {
@@ -215,6 +220,17 @@ export default function VisitorController() {
     if (nextAnim !== animStateRef.current) {
       animStateRef.current = nextAnim
       setAnimName(nextAnim)
+    }
+
+    // ── Q139: FOOTSTEP AUDIO (-14dB, ±4% random pitch jitter) ──
+    if (speed > 0.2 && !isReading) {
+      footstepDistanceRef.current += speed * delta
+      if (footstepDistanceRef.current >= 1.35) {
+        footstepDistanceRef.current = 0
+        playFootstep()
+      }
+    } else {
+      footstepDistanceRef.current = 0.4
     }
 
     // ── SYNC STORE ───────────────────────────────────────

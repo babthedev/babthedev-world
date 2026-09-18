@@ -8,6 +8,7 @@ import { DISTRICT_SENSOR_HALF_EXTENT } from '@/lib/constants'
 import { useEffect, useMemo } from 'react'
 import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
 import { flatToSphere } from '@/lib/surfacePlacement'
+import { useAudioManager } from '@/hooks/useAudioManager'
 
 
 export default function TriggerZones() {
@@ -18,6 +19,7 @@ export default function TriggerZones() {
   const setCurrentDialogue = useWorldStore((s) => s.setCurrentDialogue)
   const setDistrictLabelVisible = useWorldStore((s) => s.setDistrictLabelVisible)
   const visitedDistricts = useWorldStore((s) => s.visitedDistricts)
+  const { setDistrict, playArrivalChime } = useAudioManager()
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -64,6 +66,8 @@ export default function TriggerZones() {
               // Update spatial + browser URL state (shallow route)
               router.push(district.path, { scroll: false })
               setCurrentDistrict(district.path)
+              setDistrict(district.path)
+              playArrivalChime()
               setDistrictLabelVisible(true)
               setTimeout(() => setDistrictLabelVisible(false), 4000)
 
