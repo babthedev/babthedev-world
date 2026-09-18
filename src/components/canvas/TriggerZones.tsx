@@ -65,7 +65,7 @@ export default function TriggerZones() {
               router.push(district.path, { scroll: false })
               setCurrentDistrict(district.path)
               setDistrictLabelVisible(true)
-              setTimeout(() => setDistrictLabelVisible(false), 2000)
+              setTimeout(() => setDistrictLabelVisible(false), 4000)
 
               // Zone acknowledgement dialogue — different if revisiting
               const alreadyVisited = visitedDistricts.includes(district.path)

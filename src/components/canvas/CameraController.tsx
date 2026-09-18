@@ -22,6 +22,7 @@ export default function CameraController() {
   const currentDialogue = useWorldStore((state) => state.currentDialogue)
   const npcDialogue = useWorldStore((state) => state.npcDialogue)
   const freeFlyMode = useWorldStore((state) => state.freeFlyMode)
+  const districtLabelVisible = useWorldStore((state) => state.districtLabelVisible)
 
   const isDialogueActive = currentDialogue !== null || npcDialogue !== null
 
@@ -30,6 +31,7 @@ export default function CameraController() {
   // that messenger.abeto.co has.
   const smoothedAngle = useRef(0)
   const dialogueGlide = useRef(0)
+  const arrivalElevation = useRef(0)
 
   const raycaster = useRef(new Raycaster())
   const fadedMeshes = useRef<Set<Mesh>>(new Set())
@@ -62,6 +64,13 @@ export default function CameraController() {
       3.5 * delta
     )
 
+    // Q118: Elevate camera +0.5m during district arrival fanfare
+    arrivalElevation.current = MathUtils.lerp(
+      arrivalElevation.current,
+      districtLabelVisible ? 0.5 : 0,
+      2.5 * delta
+    )
+
     const targetDist = CAMERA_BACK - dialogueGlide.current * 1.0
     const dialogueAngleOffset = dialogueGlide.current * 0.35
     const a = smoothedAngle.current + dialogueAngleOffset
@@ -80,7 +89,7 @@ export default function CameraController() {
     // Camera position:
     _desired.set(vx, vy, vz)
       .add(_behindDir.clone().multiplyScalar(targetDist))
-      .add(_normal.clone().multiplyScalar(CAMERA_HEIGHT))
+      .add(_normal.clone().multiplyScalar(CAMERA_HEIGHT + arrivalElevation.current))
       .add(panShift)
 
     // Look at visitor's mid-body (1 unit above position along normal)
