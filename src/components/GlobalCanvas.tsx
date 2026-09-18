@@ -8,6 +8,7 @@ import InteractHint from '@/ui/InteractHint'
 import HUDIcons from '@/ui/HUDIcons'
 import DistrictLabel from '@/ui/DistrictLabel'
 import ReadingPanel from '@/ui/ReadingPanel'
+import SphereCompass from '@/ui/SphereCompass'
 import { useTourLogic } from '@/hooks/useTourLogic'
 
 export default function GlobalCanvas() {
@@ -50,6 +51,7 @@ export default function GlobalCanvas() {
       <HUDIcons />
       <ReadingPanel />
       <IntroDialogue />
+      <SphereCompass />
     </div>
   )
 }
