@@ -190,7 +190,7 @@ export default function Scene() {
           PaperGrain: subtle film grain over the paper background.
           Squigglevision: hand-drawn line wobble (skipped on low-power devices).
       ──────────────────────────────────────────────────── */}
-      <EffectComposer multisampling={0}>
+      <EffectComposer multisampling={0} enableNormalPass>
         <SMAA />
         <SobelOutline />
         <PaperGrain />
