@@ -106,6 +106,8 @@ import SobelOutline from './SobelOutline'
 import Squigglevision from './Squigglevision'
 import PaperGrain from './PaperGrain'
 import PaperCranes from './PaperCranes'
+import PaperFlecks from './PaperFlecks'
+import FootstepPuffs from './FootstepPuffs'
 import GradientSkyDome from './GradientSkyDome'
 import { useWorldStore } from '@/store/useWorldStore'
 import {
@@ -200,6 +202,8 @@ export default function Scene() {
         <World />
         <GradientSkyDome />
         <PaperCranes />
+        <PaperFlecks />
+        <FootstepPuffs />
       </Suspense>
 
       {/* ── POST-PROCESSING ──────────────────────────────

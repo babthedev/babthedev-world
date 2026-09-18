@@ -32,10 +32,12 @@ interface UISlice {
   isReading: boolean
   currentDistrict: string
   districtLabelVisible: boolean
+  nearbyPropId: string | null
   setActivePanel: (id: string | null) => void
   setIsReading: (v: boolean) => void
   setCurrentDistrict: (d: string) => void
   setDistrictLabelVisible: (v: boolean) => void
+  setNearbyPropId: (id: string | null) => void
 }
 
 interface NPCSlice {
@@ -61,6 +63,11 @@ interface ResilienceSlice {
   setContextLost: (v: boolean) => void
 }
 
+interface TransitionSlice {
+  irisPhase: 'idle' | 'closing' | 'opening'
+  triggerIrisTransition: (onMidpoint?: () => void) => void
+}
+
 // ─── COMBINED STORE ───────────────────────────────────────
 
 interface WorldStore
@@ -70,7 +77,8 @@ interface WorldStore
     UISlice,
     NPCSlice,
     DebugSlice,
-    ResilienceSlice {}
+    ResilienceSlice,
+    TransitionSlice {}
 
 export const useWorldStore = create<WorldStore>((set) => ({
   // Resilience
@@ -119,14 +127,29 @@ export const useWorldStore = create<WorldStore>((set) => ({
   isReading: false,
   currentDistrict: '/',
   districtLabelVisible: false,
+  nearbyPropId: null,
   setActivePanel: (id) => set({ activePanel: id, isReading: id !== null }),
   setIsReading: (v) => set({ isReading: v }),
   setCurrentDistrict: (d) => set({ currentDistrict: d }),
   setDistrictLabelVisible: (v) => set({ districtLabelVisible: v }),
+  setNearbyPropId: (id) => set({ nearbyPropId: id }),
 
   // NPC
   nearbyNPC: null,
   npcDialogue: null,
   setNearbyNPC: (id) => set({ nearbyNPC: id }),
   setNpcDialogue: (text) => set({ npcDialogue: text }),
+
+  // Transitions (Q70: Circular ink-drop iris wipe)
+  irisPhase: 'idle',
+  triggerIrisTransition: (onMidpoint) => {
+    set({ irisPhase: 'closing' })
+    setTimeout(() => {
+      onMidpoint?.()
+      set({ irisPhase: 'opening' })
+      setTimeout(() => {
+        set({ irisPhase: 'idle' })
+      }, 360)
+    }, 320)
+  },
 }))

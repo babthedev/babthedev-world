@@ -10,6 +10,7 @@ import DistrictLabel from '@/ui/DistrictLabel'
 import ReadingPanel from '@/ui/ReadingPanel'
 import SphereCompass from '@/ui/SphereCompass'
 import DebugOverlay from '@/ui/DebugOverlay'
+import InkIrisTransition from '@/ui/InkIrisTransition'
 import WebGLErrorBoundary from '@/components/WebGLErrorBoundary'
 import { useTourLogic } from '@/hooks/useTourLogic'
 import { usePageVisibility } from '@/hooks/usePageVisibility'
@@ -50,7 +51,7 @@ export default function GlobalCanvas() {
 
       {/* ── 2D UI LAYER ──────────────────────────────────── 
           All siblings of Canvas, not children — none use useFrame.
-          Layered by z-index: hints (20) < labels (20) < panel (30) < intro (30)
+          Layered by z-index: hints (20) < labels (20) < panel (30) < intro (30) < iris (50)
       ──────────────────────────────────────────────────── */}
       <InteractHint />
       <DistrictLabel />
@@ -59,6 +60,7 @@ export default function GlobalCanvas() {
       <IntroDialogue />
       <SphereCompass />
       <DebugOverlay />
+      <InkIrisTransition />
     </div>
   )
 }

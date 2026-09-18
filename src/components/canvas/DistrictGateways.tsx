@@ -84,7 +84,6 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
           anchorX="center"
           anchorY="middle"
           letterSpacing={0.2}
-          font="/fonts/Inter-Bold.ttf"
         >
           THE LIBRARY
         </Text>

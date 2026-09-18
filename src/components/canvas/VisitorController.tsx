@@ -27,6 +27,7 @@ import {
   getTangentBasis,
   projectOntoTangentPlane,
 } from '@/lib/sphereMath'
+import { emitFootstepPuff } from './FootstepPuffs'
 
 // Shared gradient texture — created once here, passed down.
 const gradientMap = new DataTexture(
@@ -222,12 +223,13 @@ export default function VisitorController() {
       setAnimName(nextAnim)
     }
 
-    // ── Q139: FOOTSTEP AUDIO (-14dB, ±4% random pitch jitter) ──
+    // ── Q139: FOOTSTEP AUDIO (-14dB, ±4% random pitch jitter) + Q66 DUST PUFFS ──
     if (speed > 0.2 && !isReading) {
       footstepDistanceRef.current += speed * delta
       if (footstepDistanceRef.current >= 1.35) {
         footstepDistanceRef.current = 0
         playFootstep()
+        emitFootstepPuff([pos.x, pos.y, pos.z])
       }
     } else {
       footstepDistanceRef.current = 0.4

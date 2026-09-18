@@ -5,11 +5,15 @@ import { useRef, useCallback, useEffect } from 'react'
 let sharedContext: AudioContext | null = null
 let masterGainNode: GainNode | null = null
 let districtFilterNode: BiquadFilterNode | null = null
+let humGainNode: GainNode | null = null
+let humOsc60: OscillatorNode | null = null
+let humOsc120: OscillatorNode | null = null
 
 function getAudioGraph(): {
   ctx: AudioContext
   masterGain: GainNode
   districtFilter: BiquadFilterNode
+  humGain: GainNode
 } | null {
   if (typeof window === 'undefined') return null
 
@@ -31,12 +35,41 @@ function getAudioGraph(): {
     // Graph routing: sources -> districtFilter -> masterGain -> destination
     districtFilterNode.connect(masterGainNode)
     masterGainNode.connect(sharedContext.destination)
+
+    // Q140: 404 alley continuous electrical hum (60Hz + 120Hz harmonics)
+    humGainNode = sharedContext.createGain()
+    humGainNode.gain.value = 0.0 // starts silent
+
+    humOsc60 = sharedContext.createOscillator()
+    humOsc60.type = 'sawtooth'
+    humOsc60.frequency.value = 60
+
+    humOsc120 = sharedContext.createOscillator()
+    humOsc120.type = 'sine'
+    humOsc120.frequency.value = 120
+
+    const humFilter = sharedContext.createBiquadFilter()
+    humFilter.type = 'lowpass'
+    humFilter.frequency.value = 240
+
+    humOsc60.connect(humFilter)
+    humOsc120.connect(humFilter)
+    humFilter.connect(humGainNode)
+    humGainNode.connect(masterGainNode)
+
+    try {
+      humOsc60.start()
+      humOsc120.start()
+    } catch {
+      // ignore if autoplay prevents starting immediately
+    }
   }
 
   return {
     ctx: sharedContext,
     masterGain: masterGainNode!,
     districtFilter: districtFilterNode!,
+    humGain: humGainNode!,
   }
 }
 
@@ -221,6 +254,86 @@ export function useAudioManager() {
     osc.stop(now + 0.025)
   }, [])
 
+  // ── Q140: 404 ALLEY ELECTRICAL HUM (distance-attenuated 60Hz + 120Hz buzz) ──
+  const updateElectricalHum = useCallback((distanceTo404: number, flickerModulation = 0) => {
+    if (mutedRef.current || !unlockedRef.current) return
+    const graph = getAudioGraph()
+    if (!graph || graph.ctx.state !== 'running' || !graph.humGain) return
+
+    const now = graph.ctx.currentTime
+    const maxRadius = 14.0 // hear hum within 14 meters of the 404 alley lamp
+    const proximity = Math.max(0, 1.0 - distanceTo404 / maxRadius)
+    // Non-linear cubic falloff with slight flicker modulation
+    const flickerFactor = 1.0 + flickerModulation * 0.25
+    const targetGain = proximity * proximity * 0.12 * flickerFactor
+
+    graph.humGain.gain.setTargetAtTime(targetGain, now, 0.1)
+  }, [])
+
+  // ── Q69: TACTILE PAPER PAGE SLIDE / TURN ───────────────────
+  const playPageTurn = useCallback(() => {
+    if (mutedRef.current || !unlockedRef.current) return
+    const graph = getAudioGraph()
+    if (!graph || graph.ctx.state !== 'running') return
+
+    const ctx = graph.ctx
+    const now = ctx.currentTime
+
+    // Generate white noise buffer
+    const bufferSize = Math.floor(ctx.sampleRate * 0.08)
+    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate)
+    const data = buffer.getChannelData(0)
+    for (let i = 0; i < bufferSize; i++) {
+      data[i] = Math.random() * 2 - 1
+    }
+
+    const noise = ctx.createBufferSource()
+    noise.buffer = buffer
+
+    // Filter to paper scrape sound (bandpass ~2.4kHz sweeping to 1.2kHz)
+    const filter = ctx.createBiquadFilter()
+    filter.type = 'bandpass'
+    filter.frequency.setValueAtTime(2600, now)
+    filter.frequency.exponentialRampToValueAtTime(1100, now + 0.08)
+    filter.Q.value = 1.6
+
+    const gain = ctx.createGain()
+    gain.gain.setValueAtTime(0.14, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.08)
+
+    noise.connect(filter)
+    filter.connect(gain)
+    gain.connect(graph.masterGain)
+
+    noise.start(now)
+  }, [])
+
+  // ── Q69: TACTILE TYPEWRITER KEY TAP ────────────────────────
+  const playTypewriterTap = useCallback(() => {
+    if (mutedRef.current || !unlockedRef.current) return
+    const graph = getAudioGraph()
+    if (!graph || graph.ctx.state !== 'running') return
+
+    const ctx = graph.ctx
+    const now = ctx.currentTime
+
+    const osc = ctx.createOscillator()
+    const gain = ctx.createGain()
+
+    osc.type = 'triangle'
+    osc.frequency.setValueAtTime(1400, now)
+    osc.frequency.exponentialRampToValueAtTime(280, now + 0.02)
+
+    gain.gain.setValueAtTime(0.12, now)
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.02)
+
+    osc.connect(gain)
+    gain.connect(graph.masterGain)
+
+    osc.start(now)
+    osc.stop(now + 0.025)
+  }, [])
+
   return {
     setMuted,
     setDistrict,
@@ -228,5 +341,8 @@ export function useAudioManager() {
     playFootstep,
     playArrivalChime,
     playClick,
+    updateElectricalHum,
+    playPageTurn,
+    playTypewriterTap,
   }
 }

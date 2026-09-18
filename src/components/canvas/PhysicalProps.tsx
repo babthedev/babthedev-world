@@ -3,7 +3,7 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { Text } from '@react-three/drei'
-import { Group, Mesh, MeshToonMaterial, Texture } from 'three'
+import { Group, Mesh, MeshToonMaterial, Texture, Vector3 } from 'three'
 import { flatToSphere } from '@/lib/surfacePlacement'
 import { useWorldStore } from '@/store/useWorldStore'
 
@@ -65,9 +65,16 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
     [gradientMap]
   )
 
-  // Floating animation for project miniatures
+  // Floating animation for project miniatures & Q67 interactive prop proximity sine bob
   const gemRef1 = useRef<Mesh>(null)
   const gemRef2 = useRef<Mesh>(null)
+  const book1Ref = useRef<Group>(null)
+  const book2Ref = useRef<Group>(null)
+  const plinth1Ref = useRef<Group>(null)
+  const plinth2Ref = useRef<Group>(null)
+  const terminalRef = useRef<Group>(null)
+
+  const nearbyPropId = useWorldStore((s) => s.nearbyPropId)
 
   useFrame((state) => {
     const t = state.clock.getElapsedTime()
@@ -79,13 +86,39 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
       gemRef2.current.position.y = 1.35 + Math.sin(t * 1.8 + 1.2) * 0.08
       gemRef2.current.rotation.y = -t * 0.6
     }
+
+    // ── Q67: PROXIMITY SINE BOB (2-3cm vertical lift along surface normal) ──
+    const applyBob = (
+      panelId: string,
+      ref: React.RefObject<Group | null>,
+      basePos: [number, number, number]
+    ) => {
+      if (!ref.current) return
+      if (nearbyPropId === panelId) {
+        const lift = (Math.sin(t * 3.6) * 0.5 + 0.5) * 0.025
+        const norm = new Vector3(...basePos).normalize()
+        ref.current.position.set(
+          basePos[0] + norm.x * lift,
+          basePos[1] + norm.y * lift,
+          basePos[2] + norm.z * lift
+        )
+      } else {
+        ref.current.position.set(basePos[0], basePos[1], basePos[2])
+      }
+    }
+
+    applyBob('brutalist-web', book1Ref, book1.position)
+    applyBob('essay-02', book2Ref, book2.position)
+    applyBob('oryzon', plinth1Ref, plinth1.position)
+    applyBob('roadwarden', plinth2Ref, plinth2.position)
+    applyBob('terminal', terminalRef, terminal.position)
   })
 
   return (
     <group>
       {/* ── Q112: LIBRARY HARDCOVER BOOKS ───────────────────── */}
       {/* Essay 1: Brutalist Web */}
-      <group position={book1.position} quaternion={book1.quaternion}>
+      <group ref={book1Ref} position={book1.position} quaternion={book1.quaternion}>
         {/* Book cover */}
         <mesh position={[0, 0.45, 0]} material={bookMaterial} castShadow>
           <boxGeometry args={[0.5, 0.7, 0.12]} />
@@ -109,7 +142,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
       </group>
 
       {/* Essay 2: Digital Public Spaces */}
-      <group position={book2.position} quaternion={book2.quaternion}>
+      <group ref={book2Ref} position={book2.position} quaternion={book2.quaternion}>
         <mesh position={[0, 0.45, 0]} material={bookMaterial} castShadow>
           <boxGeometry args={[0.5, 0.7, 0.12]} />
         </mesh>
@@ -131,7 +164,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
 
       {/* ── Q114: PROJECT PEDESTALS WITH HOVERING MINIATURES ── */}
       {/* Pedestal 1: Oryzon */}
-      <group position={plinth1.position} quaternion={plinth1.quaternion}>
+      <group ref={plinth1Ref} position={plinth1.position} quaternion={plinth1.quaternion}>
         {/* Chamfered concrete plinth */}
         <mesh position={[0, 0.5, 0]} material={plinthMaterial} castShadow receiveShadow>
           <cylinderGeometry args={[0.6, 0.75, 1.0, 8]} />
@@ -153,7 +186,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
       </group>
 
       {/* Pedestal 2: Roadwarden */}
-      <group position={plinth2.position} quaternion={plinth2.quaternion}>
+      <group ref={plinth2Ref} position={plinth2.position} quaternion={plinth2.quaternion}>
         <mesh position={[0, 0.5, 0]} material={plinthMaterial} castShadow receiveShadow>
           <cylinderGeometry args={[0.6, 0.75, 1.0, 8]} />
         </mesh>
@@ -173,7 +206,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
       </group>
 
       {/* ── Q115: RETRO CRT ARCHIVE TERMINAL ───────────────── */}
-      <group position={terminal.position} quaternion={terminal.quaternion}>
+      <group ref={terminalRef} position={terminal.position} quaternion={terminal.quaternion}>
         {/* Desk body */}
         <mesh position={[0, 0.4, 0]} material={plinthMaterial} castShadow>
           <boxGeometry args={[1.4, 0.8, 0.9]} />

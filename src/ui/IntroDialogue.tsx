@@ -10,7 +10,7 @@ export default function IntroDialogue() {
   const introComplete = useWorldStore((s) => s.introComplete)
   const setIntroComplete = useWorldStore((s) => s.setIntroComplete)
   const setTourActive = useWorldStore((s) => s.setTourActive)
-  const { playDialogueBlip, playClick } = useAudioManager()
+  const { playDialogueBlip, playTypewriterTap } = useAudioManager()
 
   const [lineIndex, setLineIndex] = useState(0)
   const [visible, setVisible] = useState(true)
@@ -52,13 +52,13 @@ export default function IntroDialogue() {
   }, [setIntroComplete, setTourActive])
 
   const advance = useCallback(() => {
-    playClick()
+    playTypewriterTap()
     if (isLastLine) {
       finishIntro()
     } else {
       setLineIndex((i) => i + 1)
     }
-  }, [isLastLine, finishIntro, playClick])
+  }, [isLastLine, finishIntro, playTypewriterTap])
 
   // ── AUTO-DISMISS AFTER 7 SECONDS ────────────────────────
   // Per spec: visitor can click through manually, OR it

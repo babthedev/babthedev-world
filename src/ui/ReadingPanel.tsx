@@ -5,6 +5,7 @@ import { MDXRemote } from 'next-mdx-remote'
 import { useWorldStore } from '@/store/useWorldStore'
 import { SPECIAL_DIALOGUES } from '@/lib/dialogue'
 import { PANEL_SLIDE_MS } from '@/lib/constants'
+import { useAudioManager } from '@/hooks/useAudioManager'
 
 interface ContentResponse {
   found: boolean
@@ -17,6 +18,7 @@ export default function ReadingPanel() {
   const activePanel = useWorldStore((s) => s.activePanel)
   const setActivePanel = useWorldStore((s) => s.setActivePanel)
   const setCurrentDialogue = useWorldStore((s) => s.setCurrentDialogue)
+  const { playPageTurn } = useAudioManager()
 
   const [content, setContent] = useState<ContentResponse | null>(null)
   const [loading, setLoading] = useState(false)
@@ -30,6 +32,7 @@ export default function ReadingPanel() {
       return
     }
 
+    playPageTurn()
     setLoading(true)
     fetch(`/api/content/${activePanel}`)
       .then((res) => res.json())
@@ -48,6 +51,7 @@ export default function ReadingPanel() {
 
   // ── CLOSE HANDLERS: X button, Escape, or click outside ──
   const closePanel = () => {
+    playPageTurn()
     setActivePanel(null)
     setCurrentDialogue(SPECIAL_DIALOGUES.reading_close.text)
     setTimeout(() => setCurrentDialogue(null), 2500)

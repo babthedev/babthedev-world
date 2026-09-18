@@ -28,6 +28,7 @@ import {
   projectOntoTangentPlane,
 } from '@/lib/sphereMath'
 import { flatToSphere } from '@/lib/surfacePlacement'
+import { emitFootstepPuff } from './FootstepPuffs'
 
 // Pre-compute tour waypoints on the sphere surface
 const SPHERE_TOUR_WAYPOINTS = TOUR_WAYPOINTS.map((w) => {
@@ -77,6 +78,7 @@ export default function AbdulrahmanController() {
   const lastWaypoint = useRef(-1)
   const yawRef = useRef(0)
   const isWaitingForVisitorRef = useRef(false)
+  const footstepDistanceRef = useRef(0.4)
 
   // ── DEEP LINK SPAWN ────────────────────────────────
   useEffect(() => {
@@ -253,6 +255,17 @@ export default function AbdulrahmanController() {
     if (nextAnim !== animStateRef.current) {
       animStateRef.current = nextAnim
       setAnimName(nextAnim)
+    }
+
+    // ── Q66: DUST PUFFS ON FOOTFALLS ──────────────────────
+    if (speed > 0.2) {
+      footstepDistanceRef.current += speed * delta
+      if (footstepDistanceRef.current >= 1.35) {
+        footstepDistanceRef.current = 0
+        emitFootstepPuff([pos.x, pos.y, pos.z])
+      }
+    } else {
+      footstepDistanceRef.current = 0.4
     }
 
     setAbdulrahmanPosition([pos.x, pos.y, pos.z])
