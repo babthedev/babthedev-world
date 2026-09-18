@@ -1,14 +1,25 @@
 'use client'
 
-import { forwardRef, useMemo } from 'react'
-import { Effect } from 'postprocessing'
-import { Uniform, Vector2, Color } from 'three'
+import { forwardRef, useMemo, useContext, useEffect } from 'react'
+import { Effect, EffectAttribute } from 'postprocessing'
+import { Uniform, Vector2, Color, DataTexture, RGBAFormat, UnsignedByteType, Texture } from 'three'
 import { useThree } from '@react-three/fiber'
+import { EffectComposerContext } from '@react-three/postprocessing'
 import {
   OUTLINE_COLOR,
   OUTLINE_THICKNESS,
   OUTLINE_DEPTH_THRESHOLD,
 } from '@/lib/constants'
+
+// Fallback 1x1 neutral normal texture [0, 0, 1] for when normalPass is disabled or initializing
+const defaultNormalTexture = new DataTexture(
+  new Uint8Array([128, 128, 255, 255]),
+  1,
+  1,
+  RGBAFormat,
+  UnsignedByteType
+)
+defaultNormalTexture.needsUpdate = true
 
 // ── FRAGMENT SHADER ────────────────────────────────────
 // Combined depth + normal Sobel edge detection.
@@ -18,6 +29,7 @@ import {
 //   for a natural "ink on paper" look where closer objects have
 //   bolder strokes.
 const fragmentShader = /* glsl */ `
+  uniform sampler2D normalBuffer;
   uniform vec2 texelSize;
   uniform vec3 outlineColor;
   uniform float depthThreshold;
@@ -26,7 +38,6 @@ const fragmentShader = /* glsl */ `
   uniform float thicknessFar;
 
   // Read the scene normal from the GBuffer normal texture.
-  // postprocessing v6 provides inputBuffer + normalBuffer via defines.
   vec3 readNormal(vec2 coord) {
     return texture2D(normalBuffer, coord).rgb * 2.0 - 1.0;
   }
@@ -87,9 +98,12 @@ class SobelOutlineEffectImpl extends Effect {
     thicknessNear = 1.0,
     thicknessFar = 0.4,
     resolution = new Vector2(1, 1),
+    normalTexture = null as Texture | null,
   } = {}) {
     super('SobelOutlineEffect', fragmentShader, {
+      attributes: EffectAttribute.DEPTH,
       uniforms: new Map<string, Uniform>([
+        ['normalBuffer', new Uniform(normalTexture ?? defaultNormalTexture)],
         [
           'texelSize',
           new Uniform(
@@ -105,8 +119,6 @@ class SobelOutlineEffectImpl extends Effect {
         ['thicknessNear', new Uniform(thicknessNear)],
         ['thicknessFar', new Uniform(thicknessFar)],
       ]),
-      // Request the normal buffer from the EffectComposer
-      defines: new Map([['NORMAL_BUFFER', 'normalBuffer']]),
     })
 
     this._thickness = thickness
@@ -115,6 +127,13 @@ class SobelOutlineEffectImpl extends Effect {
 
   private _thickness: number
   private _resolution: Vector2
+
+  setNormalBuffer(texture: Texture | null) {
+    const normalUniform = this.uniforms.get('normalBuffer')
+    if (normalUniform) {
+      normalUniform.value = texture ?? defaultNormalTexture
+    }
+  }
 
   setSize(width: number, height: number) {
     this._resolution.set(width, height)
@@ -131,14 +150,25 @@ class SobelOutlineEffectImpl extends Effect {
 // ── R3F WRAPPER ────────────────────────────────────────
 const SobelOutline = forwardRef<SobelOutlineEffectImpl>((_, ref) => {
   const { size } = useThree()
+  const composerContext = useContext(EffectComposerContext)
+  const normalPass = composerContext?.normalPass
+
+  const normalTexture = (normalPass as any)?.texture ?? null
 
   const effect = useMemo(() => {
     const fx = new SobelOutlineEffectImpl({
       resolution: new Vector2(size.width, size.height),
+      normalTexture,
     })
     fx.setSize(size.width, size.height)
     return fx
-  }, [size.width, size.height])
+  }, [size.width, size.height, normalTexture])
+
+  useEffect(() => {
+    if ((normalPass as any)?.texture) {
+      effect.setNormalBuffer((normalPass as any).texture)
+    }
+  }, [normalPass, effect])
 
   return <primitive ref={ref} object={effect} dispose={null} />
 })

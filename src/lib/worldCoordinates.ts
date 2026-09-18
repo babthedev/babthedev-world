@@ -181,7 +181,7 @@ export const PROP_LOCATIONS: PropLocation[] = [
   {
     id: '404-flicker-lamp',
     position: [0, 0, 99],
-    model: 'lamp-post.glb',
+    model: 'light-curved.glb',
     interactive: false,
     district: '/404',
   },
