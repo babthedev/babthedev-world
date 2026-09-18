@@ -106,6 +106,7 @@ import SobelOutline from './SobelOutline'
 import Squigglevision from './Squigglevision'
 import PaperGrain from './PaperGrain'
 import PaperCranes from './PaperCranes'
+import GradientSkyDome from './GradientSkyDome'
 import {
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -179,6 +180,7 @@ export default function Scene() {
       {/* ── WORLD ────────────────────────────────────── */}
       <Suspense fallback={null}>
         <World />
+        <GradientSkyDome />
         <PaperCranes />
       </Suspense>
 
