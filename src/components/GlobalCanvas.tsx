@@ -10,12 +10,15 @@ import DistrictLabel from '@/ui/DistrictLabel'
 import ReadingPanel from '@/ui/ReadingPanel'
 import SphereCompass from '@/ui/SphereCompass'
 import DebugOverlay from '@/ui/DebugOverlay'
+import WebGLErrorBoundary from '@/components/WebGLErrorBoundary'
 import { useTourLogic } from '@/hooks/useTourLogic'
+import { usePageVisibility } from '@/hooks/usePageVisibility'
 
 export default function GlobalCanvas() {
   // Global tour-resume logic — lives here since this component
   // is always mounted for the lifetime of the app
   useTourLogic()
+  usePageVisibility()
 
   console.log('GlobalCanvas rendering')
 
@@ -38,7 +41,9 @@ export default function GlobalCanvas() {
               </div>
             }
           >
-            <Scene />
+            <WebGLErrorBoundary>
+              <Scene />
+            </WebGLErrorBoundary>
           </Suspense>
         </KeyboardControls>
       </div>

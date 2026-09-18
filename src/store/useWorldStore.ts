@@ -54,6 +54,13 @@ interface DebugSlice {
   toggleFreeFlyMode: () => void
 }
 
+interface ResilienceSlice {
+  isTabHidden: boolean
+  contextLost: boolean
+  setIsTabHidden: (v: boolean) => void
+  setContextLost: (v: boolean) => void
+}
+
 // ─── COMBINED STORE ───────────────────────────────────────
 
 interface WorldStore
@@ -62,9 +69,16 @@ interface WorldStore
     PlayerSlice,
     UISlice,
     NPCSlice,
-    DebugSlice {}
+    DebugSlice,
+    ResilienceSlice {}
 
 export const useWorldStore = create<WorldStore>((set) => ({
+  // Resilience
+  isTabHidden: false,
+  contextLost: false,
+  setIsTabHidden: (v) => set({ isTabHidden: v }),
+  setContextLost: (v) => set({ contextLost: v }),
+
   // Debug
   debugMode: false,
   freeFlyMode: false,

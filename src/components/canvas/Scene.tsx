@@ -107,6 +107,7 @@ import Squigglevision from './Squigglevision'
 import PaperGrain from './PaperGrain'
 import PaperCranes from './PaperCranes'
 import GradientSkyDome from './GradientSkyDome'
+import { useWorldStore } from '@/store/useWorldStore'
 import {
   CAMERA_FOV,
   CAMERA_NEAR,
@@ -124,9 +125,26 @@ const isLowPower =
   typeof window !== 'undefined' && navigator.hardwareConcurrency <= 4
 
 export default function Scene() {
+  const isTabHidden = useWorldStore((s) => s.isTabHidden)
+  const setContextLost = useWorldStore((s) => s.setContextLost)
+
   return (
     <Canvas
       shadows
+      frameloop={isTabHidden ? 'never' : 'always'}
+      onCreated={({ gl }) => {
+        const dom = gl.domElement
+        // Q90: Automated webglcontextlost recovery
+        dom.addEventListener('webglcontextlost', (e) => {
+          e.preventDefault()
+          console.warn('WebGL context lost. Attempting recovery...')
+          setContextLost(true)
+        })
+        dom.addEventListener('webglcontextrestored', () => {
+          console.info('WebGL context successfully restored.')
+          setContextLost(false)
+        })
+      }}
       camera={{
         position: [0, 4, -6],
         fov: CAMERA_FOV,
