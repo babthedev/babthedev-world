@@ -27,6 +27,13 @@ import {
   getTangentBasis,
   projectOntoTangentPlane,
 } from '@/lib/sphereMath'
+import { flatToSphere } from '@/lib/surfacePlacement'
+
+// Pre-compute tour waypoints on the sphere surface
+const SPHERE_TOUR_WAYPOINTS = TOUR_WAYPOINTS.map((w) => {
+  const { position } = flatToSphere(w.position[0], w.position[2], 1.0)
+  return { ...w, spherePosition: position }
+})
 
 const gradientMap = new DataTexture(
   TOON_GRADIENT_STEPS,
@@ -69,6 +76,7 @@ export default function AbdulrahmanController() {
   const dialogueTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastWaypoint = useRef(-1)
   const yawRef = useRef(0)
+  const isWaitingForVisitorRef = useRef(false)
 
   // ── DEEP LINK SPAWN ────────────────────────────────
   useEffect(() => {
@@ -132,22 +140,53 @@ export default function AbdulrahmanController() {
     if (isReading) {
       // Waiting animation handled via animState below — no movement
     } else if (isTourActive) {
-      // ── GUIDED TOUR: follow waypoint array ──────────
-      const waypoint = TOUR_WAYPOINTS[tourWaypointIndex]
-      if (waypoint) {
-        _target.set(waypoint.position[0], waypoint.position[1], waypoint.position[2])
-        const dist = _posVec.distanceTo(_target)
+      // ── GUIDED TOUR: follow waypoint array with adaptive waiting (Q117) ──
+      const visVec = new Vector3(
+        visitorPosition[0],
+        visitorPosition[1],
+        visitorPosition[2]
+      )
+      const distToVisitor = _posVec.distanceTo(visVec)
 
-        if (dist > TETHER_DISTANCE) {
-          _direction.copy(_target).sub(_posVec)
-          // Project onto tangent plane — stay on the surface
-          _direction.copy(projectOntoTangentPlane(_direction, _normal))
-          _direction.normalize().multiplyScalar(ABDULRAHMAN_SPEED)
-        } else if (
-          tourWaypointIndex < TOUR_WAYPOINTS.length - 1 &&
-          dist < TETHER_DISTANCE
-        ) {
-          setTourWaypointIndex(tourWaypointIndex + 1)
+      // Q117: If separation exceeds 5m, pause and face visitor; resume when visitor <= 2.5m
+      if (distToVisitor > 5.0) {
+        isWaitingForVisitorRef.current = true
+      } else if (distToVisitor <= 2.5) {
+        isWaitingForVisitorRef.current = false
+      }
+
+      if (isWaitingForVisitorRef.current) {
+        // Turn to face visitor while waiting
+        const faceVisDir = projectOntoTangentPlane(visVec.clone().sub(_posVec), _normal)
+        if (faceVisDir.lengthSq() > 0.01) {
+          faceVisDir.normalize()
+          yawRef.current = Math.atan2(
+            faceVisDir.dot(tangentRight),
+            faceVisDir.dot(tangentForward)
+          )
+        }
+        _direction.set(0, 0, 0)
+      } else {
+        const waypoint = SPHERE_TOUR_WAYPOINTS[tourWaypointIndex]
+        if (waypoint) {
+          _target.set(
+            waypoint.spherePosition[0],
+            waypoint.spherePosition[1],
+            waypoint.spherePosition[2]
+          )
+          const dist = _posVec.distanceTo(_target)
+
+          if (dist > TETHER_DISTANCE) {
+            _direction.copy(_target).sub(_posVec)
+            // Project onto tangent plane — stay on the surface
+            _direction.copy(projectOntoTangentPlane(_direction, _normal))
+            _direction.normalize().multiplyScalar(ABDULRAHMAN_SPEED)
+          } else if (
+            tourWaypointIndex < SPHERE_TOUR_WAYPOINTS.length - 1 &&
+            dist <= TETHER_DISTANCE
+          ) {
+            setTourWaypointIndex(tourWaypointIndex + 1)
+          }
         }
       }
     } else {
