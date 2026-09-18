@@ -10,13 +10,17 @@ import {
   PROP_LOCATIONS,
   NPC_LOCATIONS,
 } from '@/lib/worldCoordinates'
-import { mapToSphere } from '@/lib/surfacePlacement'
+import { mapToSphere, flatToSphere } from '@/lib/surfacePlacement'
 import NPCCharacter from './NPCCharacter'
 import FlickerLight from './FlickerLight'
 
 interface EnvironmentProps {
   gradientMap: Texture
 }
+
+// ── Pre-compute sphere-projected light positions ────────────
+const SPHERE_404_LIGHT_POS = flatToSphere(0, 99, 0).position
+const SPHERE_CAFE_LANTERN_POS = flatToSphere(-42, 3, 2.5).position
 
 // ── Pre-compute sphere-projected positions at module level ──
 // This avoids recalculating every render.
@@ -64,11 +68,18 @@ function KenneyAsset({
   receiveShadow?: boolean
 }) {
   const { scene } = useGLTF(`/kenney/${model}`)
-
-  const material = useMemo(
-    () => new MeshToonMaterial({ color, gradientMap }),
-    [color, gradientMap]
-  )
+  const isLamp = model.includes('light') || model.includes('lamp')
+  const material = useMemo(() => {
+    if (isLamp) {
+      return new MeshToonMaterial({
+        color: '#FFFFFF',
+        emissive: '#FFF6E0',
+        emissiveIntensity: 0.9,
+        gradientMap,
+      })
+    }
+    return new MeshToonMaterial({ color, gradientMap })
+  }, [color, gradientMap, isLamp])
 
   useEffect(() => {
     scene.traverse((child) => {
@@ -94,7 +105,16 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
   return (
     <group>
       {/* ── 404 ZONE FLICKERING LIGHT ─────────────────── */}
-      <FlickerLight position={[0, 0, 99]} />
+      <FlickerLight position={SPHERE_404_LIGHT_POS} />
+
+      {/* ── Q131: JOE'S CAFE WARM LANTERN (2nd Strategic Point Light) ── */}
+      <pointLight
+        position={SPHERE_CAFE_LANTERN_POS}
+        color="#FFE8C0"
+        intensity={1.0}
+        distance={10}
+        decay={2}
+      />
 
       {/* ── ROADS ────────────────────────────────────
           Non-colliding — visitor walks over these freely,
@@ -116,25 +136,28 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
       {/* ── BUILDINGS ────────────────────────────────
           Fixed RigidBody wrapper with a simple box collider
           approximation so characters can't walk through walls.
-          Projected onto sphere surface with normal alignment.
+          Q132: Scale jitter (0.9-1.2x) for varied architectural silhouettes.
       ──────────────────────────────────────────────── */}
-      {SPHERE_BUILDINGS.map((building, i) => (
-        <RigidBody
-          key={`building-${i}`}
-          type="fixed"
-          colliders="cuboid"
-          position={building.position}
-          rotation={building.rotation}
-        >
-          <KenneyAsset
-            model={building.model}
-            position={[0, 0, 0]}
-            scale={building.scale ?? 1}
-            gradientMap={gradientMap}
-            color="#141414"
-          />
-        </RigidBody>
-      ))}
+      {SPHERE_BUILDINGS.map((building, i) => {
+        const buildingScale = building.scale ?? (0.9 + ((i * 13) % 7) * 0.05)
+        return (
+          <RigidBody
+            key={`building-${i}`}
+            type="fixed"
+            colliders="cuboid"
+            position={building.position}
+            rotation={building.rotation}
+          >
+            <KenneyAsset
+              model={building.model}
+              position={[0, 0, 0]}
+              scale={buildingScale}
+              gradientMap={gradientMap}
+              color="#141414"
+            />
+          </RigidBody>
+        )
+      })}
 
       {/* ── PROPS ────────────────────────────────────
           Small/medium props: no collider (per spec — papers,
