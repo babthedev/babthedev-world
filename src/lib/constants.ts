@@ -4,12 +4,18 @@
 // ============================================================
 
 // --- PHYSICS ---
-export const GRAVITY = -30
-export const VISITOR_SPEED = 5
-export const ABDULRAHMAN_SPEED = 5
+export const GRAVITY = 0                       // Linear gravity disabled; radial gravity used instead
+export const RADIAL_GRAVITY = 35               // m/s² pulling toward sphere center
+export const VISITOR_SPEED = 3                 // Base speed (Q18: 3 units/sec, ~52s planet lap)
+export const VISITOR_BOOST_SPEED = 4           // Subtle boost after 10s of wandering without interaction
+export const ABDULRAHMAN_SPEED = 3             // Matches visitor base speed
 export const TETHER_DISTANCE = 2
 export const CATCH_UP_DISTANCE = 15
 export const LINEAR_DAMPING = 4
+
+// --- SPHERICAL WORLD ---
+export const PLANET_RADIUS = 25                // 50m diameter sphere
+export const SPHERE_SEGMENTS = 128             // Smooth sphere mesh resolution
 
 // --- CAMERA ---
 export const CAMERA_HEIGHT = 3
@@ -18,9 +24,12 @@ export const CAMERA_FOV = 60
 export const CAMERA_LERP = 5
 export const CAMERA_NEAR = 0.1
 export const CAMERA_FAR = 200
+export const CAMERA_PITCH_MIN = -15 * (Math.PI / 180)   // Q142: -15° down
+export const CAMERA_PITCH_MAX = 60 * (Math.PI / 180)    // Q142: +60° up
+export const CAMERA_IMPULSE = 0.03                       // Q145: micro-impulse distance (m)
 
 // --- TOON SHADER ---
-export const TOON_GRADIENT_STEPS = new Uint8Array([180, 210, 235, 255])
+export const TOON_GRADIENT_STEPS = new Uint8Array([80, 150, 210, 255])
 export const OUTLINE_COLOR = '#0B0B0B'
 export const OUTLINE_THICKNESS = 1.4          // pixels, used by Sobel effect
 export const OUTLINE_DEPTH_THRESHOLD = 0.0008 // edge sensitivity
@@ -50,8 +59,8 @@ export const DISTRICT_SENSOR_HALF_EXTENT = 5
 // --- RENDERING ---
 export const MAX_PIXEL_RATIO = 1.5
 export const SHADOW_MAP_SIZE = 2048
-export const FOG_NEAR = 25
-export const FOG_FAR = 90
+export const FOG_NEAR = 15
+export const FOG_FAR = 40
 
 // --- AMBIENT LIGHT ---
 export const AMBIENT_INTENSITY = 0.4

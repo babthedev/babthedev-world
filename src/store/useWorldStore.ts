@@ -12,10 +12,16 @@ interface TourSlice {
   tourWaypointIndex: number
   currentDialogue: string | null
   visitedDistricts: string[]
+  tourCompleted: boolean
+  passportStampVisible: boolean
+  craneFlyoverTrigger: number
   setTourActive: (v: boolean) => void
   setTourWaypointIndex: (i: number) => void
   setCurrentDialogue: (text: string | null) => void
   markDistrictVisited: (district: string) => void
+  setTourCompleted: (v: boolean) => void
+  setPassportStampVisible: (v: boolean) => void
+  triggerCraneFlyover: () => void
 }
 
 interface PlayerSlice {
@@ -32,10 +38,12 @@ interface UISlice {
   isReading: boolean
   currentDistrict: string
   districtLabelVisible: boolean
+  nearbyPropId: string | null
   setActivePanel: (id: string | null) => void
   setIsReading: (v: boolean) => void
   setCurrentDistrict: (d: string) => void
   setDistrictLabelVisible: (v: boolean) => void
+  setNearbyPropId: (id: string | null) => void
 }
 
 interface NPCSlice {
@@ -45,6 +53,29 @@ interface NPCSlice {
   setNpcDialogue: (text: string | null) => void
 }
 
+interface DebugSlice {
+  debugMode: boolean
+  freeFlyMode: boolean
+  setDebugMode: (v: boolean) => void
+  setFreeFlyMode: (v: boolean) => void
+  toggleDebugMode: () => void
+  toggleFreeFlyMode: () => void
+}
+
+interface ResilienceSlice {
+  isTabHidden: boolean
+  contextLost: boolean
+  setIsTabHidden: (v: boolean) => void
+  setContextLost: (v: boolean) => void
+}
+
+interface TransitionSlice {
+  irisPhase: 'idle' | 'closing' | 'opening'
+  triggerIrisTransition: (onMidpoint?: () => void) => void
+  cameraImpulse: number  // Q145: increments to trigger micro-camera punch
+  triggerCameraImpulse: () => void
+}
+
 // ─── COMBINED STORE ───────────────────────────────────────
 
 interface WorldStore
@@ -52,9 +83,25 @@ interface WorldStore
     TourSlice,
     PlayerSlice,
     UISlice,
-    NPCSlice {}
+    NPCSlice,
+    DebugSlice,
+    ResilienceSlice,
+    TransitionSlice {}
 
 export const useWorldStore = create<WorldStore>((set) => ({
+  // Resilience
+  isTabHidden: false,
+  contextLost: false,
+  setIsTabHidden: (v) => set({ isTabHidden: v }),
+  setContextLost: (v) => set({ contextLost: v }),
+
+  // Debug
+  debugMode: false,
+  freeFlyMode: false,
+  setDebugMode: (v) => set({ debugMode: v }),
+  setFreeFlyMode: (v) => set({ freeFlyMode: v }),
+  toggleDebugMode: () => set((s) => ({ debugMode: !s.debugMode })),
+  toggleFreeFlyMode: () => set((s) => ({ freeFlyMode: !s.freeFlyMode })),
 
   // Welcome
   introComplete: false,
@@ -65,6 +112,9 @@ export const useWorldStore = create<WorldStore>((set) => ({
   tourWaypointIndex: 0,
   currentDialogue: null,
   visitedDistricts: [],
+  tourCompleted: false,
+  passportStampVisible: false,
+  craneFlyoverTrigger: 0,
   setTourActive: (v) => set({ isTourActive: v }),
   setTourWaypointIndex: (i) => set({ tourWaypointIndex: i }),
   setCurrentDialogue: (text) => set({ currentDialogue: text }),
@@ -74,6 +124,10 @@ export const useWorldStore = create<WorldStore>((set) => ({
         ? state.visitedDistricts
         : [...state.visitedDistricts, district],
     })),
+  setTourCompleted: (v) => set({ tourCompleted: v }),
+  setPassportStampVisible: (v) => set({ passportStampVisible: v }),
+  triggerCraneFlyover: () =>
+    set((s) => ({ craneFlyoverTrigger: s.craneFlyoverTrigger + 1 })),
 
   // Player
   position: [0, 0, 0],
@@ -88,14 +142,42 @@ export const useWorldStore = create<WorldStore>((set) => ({
   isReading: false,
   currentDistrict: '/',
   districtLabelVisible: false,
-  setActivePanel: (id) => set({ activePanel: id, isReading: id !== null }),
+  nearbyPropId: null,
+  setActivePanel: (id) => set((s) => {
+    // Q145: Trigger micro-camera impulse when closing a panel
+    const closing = id === null && s.activePanel !== null
+    return {
+      activePanel: id,
+      isReading: id !== null,
+      ...(closing ? { cameraImpulse: s.cameraImpulse + 1 } : {}),
+    }
+  }),
   setIsReading: (v) => set({ isReading: v }),
   setCurrentDistrict: (d) => set({ currentDistrict: d }),
   setDistrictLabelVisible: (v) => set({ districtLabelVisible: v }),
+  setNearbyPropId: (id) => set({ nearbyPropId: id }),
 
   // NPC
   nearbyNPC: null,
   npcDialogue: null,
   setNearbyNPC: (id) => set({ nearbyNPC: id }),
   setNpcDialogue: (text) => set({ npcDialogue: text }),
+
+  // Transitions (Q70: Circular ink-drop iris wipe)
+  irisPhase: 'idle',
+  triggerIrisTransition: (onMidpoint) => {
+    set({ irisPhase: 'closing' })
+    setTimeout(() => {
+      onMidpoint?.()
+      set({ irisPhase: 'opening' })
+      setTimeout(() => {
+        set({ irisPhase: 'idle' })
+      }, 360)
+    }, 320)
+  },
+
+  // Q145: Micro-camera impulse
+  cameraImpulse: 0,
+  triggerCameraImpulse: () =>
+    set((s) => ({ cameraImpulse: s.cameraImpulse + 1 })),
 }))

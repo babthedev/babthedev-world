@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Abdulrahman's Hub — Essays &amp; Projects</title>
+    <link>https://babthedev.com</link>
+    <description>A spatial brutalist representation of Abdulrahman's work, ideas, and architecture.</description>
+    <language>en-us</language>
+    <lastBuildDate>Fri, 18 Sep 2026 19:24:16 GMT</lastBuildDate>
+    <atom:link href="https://babthedev.com/feed.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>The Real Cost of Complexity</title>
+      <link>https://babthedev.com/essays#essay-02</link>
+      <guid>https://babthedev.com/essays/essay-02</guid>
+      <pubDate>Wed, 18 Feb 2026 00:00:00 GMT</pubDate>
+      <description>The Real Cost of Complexity</description>
+    </item>
+    <item>
+      <title>The Case for Brutalist Web Architecture</title>
+      <link>https://babthedev.com/essays#brutalist-web</link>
+      <guid>https://babthedev.com/essays/brutalist-web</guid>
+      <pubDate>Tue, 04 Nov 2025 00:00:00 GMT</pubDate>
+      <description>The Case for Brutalist Web Architecture</description>
+    </item>
+    <item>
+      <title>The Archive</title>
+      <link>https://babthedev.com/projects#archive</link>
+      <guid>https://babthedev.com/projects/archive</guid>
+      <pubDate>Mon, 10 Mar 2025 00:00:00 GMT</pubDate>
+      <description>Open Source</description>
+    </item>
+    <item>
+      <title>Roadwarden</title>
+      <link>https://babthedev.com/projects#roadwarden</link>
+      <guid>https://babthedev.com/projects/roadwarden</guid>
+      <pubDate>Sun, 01 Sep 2024 00:00:00 GMT</pubDate>
+      <description>Game Development</description>
+    </item>
+    <item>
+      <title>Oryzon</title>
+      <link>https://babthedev.com/projects#oryzon</link>
+      <guid>https://babthedev.com/projects/oryzon</guid>
+      <pubDate>Mon, 15 Jan 2024 00:00:00 GMT</pubDate>
+      <description>Product Design</description>
+    </item>
+  </channel>
+</rss>

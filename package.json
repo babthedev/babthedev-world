@@ -4,9 +4,18 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "preinstall": "npx only-allow pnpm",
+    "validate:content": "tsx scripts/validate-content.ts",
+    "generate:rss": "tsx scripts/generate-rss.ts",
+    "test": "tsx src/lib/__tests__/sphereMath.test.ts",
+    "test:visual": "playwright test",
+    "pre-commit": "tsx scripts/validate-content.ts && tsx src/lib/__tests__/sphereMath.test.ts && tsc --noEmit",
+    "build": "tsx scripts/validate-content.ts && tsx scripts/generate-rss.ts && next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "assets:optimize": "node scripts/optimize-assets.mjs",
+    "assets:budget": "node scripts/check-asset-budget.mjs",
+    "verify:dod": "node scripts/verify-dod.mjs"
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.4",
@@ -24,9 +33,11 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "three": "^0.184.0",
+    "zod": "^4.6.5",
     "zustand": "^5.0.14"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -34,6 +45,16 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "tailwindcss": "^4",
+    "tsx": "^4.23.13",
     "typescript": "^5"
+  },
+  "packageManager": "pnpm@11.25.0",
+  "lint-staged": {
+    "src/**/*.{ts,tsx}": [
+      "eslint --fix"
+    ],
+    "src/content/**/*.mdx": [
+      "tsx scripts/validate-content.ts"
+    ]
   }
 }

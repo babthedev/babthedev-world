@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
-import { Mesh, MeshToonMaterial, Texture } from 'three'
+import { Mesh, MeshToonMaterial, Texture, Quaternion, Euler } from 'three'
 import { RigidBody } from '@react-three/rapier'
 import {
   ROAD_TILES,
@@ -10,12 +10,45 @@ import {
   PROP_LOCATIONS,
   NPC_LOCATIONS,
 } from '@/lib/worldCoordinates'
+import { mapToSphere, flatToSphere } from '@/lib/surfacePlacement'
 import NPCCharacter from './NPCCharacter'
 import FlickerLight from './FlickerLight'
+import DistrictGateways from './DistrictGateways'
+import InWorldSignage from './InWorldSignage'
+import RoadMarkings from './RoadMarkings'
+import PhysicalProps from './PhysicalProps'
+import WindStreaks from './WindStreaks'
+import EasterEggs from './EasterEggs'
 
 interface EnvironmentProps {
   gradientMap: Texture
 }
+
+// ── Pre-compute sphere-projected light positions ────────────
+const SPHERE_404_LIGHT_POS = flatToSphere(0, 99, 0).position
+const SPHERE_CAFE_LANTERN_POS = flatToSphere(-42, 3, 2.5).position
+
+// ── Pre-compute sphere-projected positions at module level ──
+// This avoids recalculating every render.
+const SPHERE_ROADS = mapToSphere(ROAD_TILES.map(t => ({
+  ...t,
+  rotation: t.rotation ?? [0, 0, 0] as [number, number, number],
+})))
+
+const SPHERE_BUILDINGS = mapToSphere(BUILDINGS.map(b => ({
+  ...b,
+  rotation: b.rotation ?? [0, 0, 0] as [number, number, number],
+})))
+
+const SPHERE_PROPS = mapToSphere(PROP_LOCATIONS.map(p => ({
+  ...p,
+  rotation: p.rotation ?? [0, 0, 0] as [number, number, number],
+})))
+
+const SPHERE_NPCS = mapToSphere(NPC_LOCATIONS.map(n => ({
+  ...n,
+  rotation: n.rotation ?? [0, 0, 0] as [number, number, number],
+})))
 
 // ── GENERIC KENNEY ASSET LOADER ─────────────────────────
 // Loads any GLB from /public/kenney/, strips its material,
@@ -41,11 +74,18 @@ function KenneyAsset({
   receiveShadow?: boolean
 }) {
   const { scene } = useGLTF(`/kenney/${model}`)
-
-  const material = useMemo(
-    () => new MeshToonMaterial({ color, gradientMap }),
-    [color, gradientMap]
-  )
+  const isLamp = model.includes('light') || model.includes('lamp')
+  const material = useMemo(() => {
+    if (isLamp) {
+      return new MeshToonMaterial({
+        color: '#FFFFFF',
+        emissive: '#FFF6E0',
+        emissiveIntensity: 0.9,
+        gradientMap,
+      })
+    }
+    return new MeshToonMaterial({ color, gradientMap })
+  }, [color, gradientMap, isLamp])
 
   useEffect(() => {
     scene.traverse((child) => {
@@ -71,13 +111,23 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
   return (
     <group>
       {/* ── 404 ZONE FLICKERING LIGHT ─────────────────── */}
-      <FlickerLight position={[0, 0, 99]} />
+      <FlickerLight position={SPHERE_404_LIGHT_POS} />
+
+      {/* ── Q131: JOE'S CAFE WARM LANTERN (2nd Strategic Point Light) ── */}
+      <pointLight
+        position={SPHERE_CAFE_LANTERN_POS}
+        color="#FFE8C0"
+        intensity={1.0}
+        distance={10}
+        decay={2}
+      />
 
       {/* ── ROADS ────────────────────────────────────
           Non-colliding — visitor walks over these freely,
           they're just visual ground dressing.
+          Now projected onto the sphere surface.
       ──────────────────────────────────────────────── */}
-      {ROAD_TILES.map((tile, i) => (
+      {SPHERE_ROADS.map((tile, i) => (
         <KenneyAsset
           key={`road-${i}`}
           model={tile.model}
@@ -92,33 +142,36 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
       {/* ── BUILDINGS ────────────────────────────────
           Fixed RigidBody wrapper with a simple box collider
           approximation so characters can't walk through walls.
-          Uses trimesh-free cuboid for perf — good enough for
-          blocky Kenney building silhouettes.
+          Q132: Scale jitter (0.9-1.2x) for varied architectural silhouettes.
       ──────────────────────────────────────────────── */}
-      {BUILDINGS.map((building, i) => (
-        <RigidBody
-          key={`building-${i}`}
-          type="fixed"
-          colliders="cuboid"
-          position={building.position}
-          rotation={building.rotation ?? [0, 0, 0]}
-        >
-          <KenneyAsset
-            model={building.model}
-            position={[0, 0, 0]}
-            scale={building.scale ?? 1}
-            gradientMap={gradientMap}
-            color="#141414"
-          />
-        </RigidBody>
-      ))}
+      {SPHERE_BUILDINGS.map((building, i) => {
+        const buildingScale = building.scale ?? (0.9 + ((i * 13) % 7) * 0.05)
+        return (
+          <RigidBody
+            key={`building-${i}`}
+            type="fixed"
+            colliders="cuboid"
+            position={building.position}
+            rotation={building.rotation}
+          >
+            <KenneyAsset
+              model={building.model}
+              position={[0, 0, 0]}
+              scale={buildingScale}
+              gradientMap={gradientMap}
+              color="#141414"
+            />
+          </RigidBody>
+        )
+      })}
 
       {/* ── PROPS ────────────────────────────────────
           Small/medium props: no collider (per spec — papers,
           cups, small items pass through). Interactive props
           get a name tag so InteractiveProps.tsx can raycast them.
+          Projected onto sphere surface.
       ──────────────────────────────────────────────── */}
-      {PROP_LOCATIONS.map((prop) => (
+      {SPHERE_PROPS.map((prop) => (
         <group
           key={prop.id}
           name={prop.interactive ? `interactive-${prop.id}` : prop.id}
@@ -136,9 +189,27 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
       ))}
 
       {/* ── NPCS ─────────────────────────────────────── */}
-      {NPC_LOCATIONS.map((npc) => (
+      {SPHERE_NPCS.map((npc) => (
         <NPCCharacter key={npc.id} npc={npc} gradientMap={gradientMap} />
       ))}
+
+      {/* ── Q133: CONFORMAL ROAD MARKINGS ────────────── */}
+      <RoadMarkings />
+
+      {/* ── Q87: IN-WORLD SDF SIGNAGE ─────────────────── */}
+      <InWorldSignage />
+
+      {/* ── Q135: OVERHEAD DISTRICT GATEWAYS ─────────── */}
+      <DistrictGateways gradientMap={gradientMap} />
+
+      {/* ── Q112-Q115: PHYSICAL 3D CONTENT PROPS ────── */}
+      <PhysicalProps gradientMap={gradientMap} />
+
+      {/* ── Q103: ENVIRONMENTAL WIND STREAKS ─────────── */}
+      <WindStreaks />
+
+      {/* ── Q105: ENVIRONMENTAL EASTER EGGS ───────────── */}
+      <EasterEggs gradientMap={gradientMap} />
     </group>
   )
 }

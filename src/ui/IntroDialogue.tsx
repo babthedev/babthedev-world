@@ -1,38 +1,67 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useWorldStore } from '@/store/useWorldStore'
 import { INTRO_SEQUENCE } from '@/lib/dialogue'
 import { INTRO_AUTO_DISMISS_MS } from '@/lib/constants'
+import { useAudioManager } from '@/hooks/useAudioManager'
+import { useTelemetry } from '@/hooks/useTelemetry'
 
 export default function IntroDialogue() {
   const introComplete = useWorldStore((s) => s.introComplete)
   const setIntroComplete = useWorldStore((s) => s.setIntroComplete)
   const setTourActive = useWorldStore((s) => s.setTourActive)
+  const { playDialogueBlip, playTypewriterTap } = useAudioManager()
+  const { trackEvent } = useTelemetry()
 
   const [lineIndex, setLineIndex] = useState(0)
   const [visible, setVisible] = useState(true)
+  const [displayedText, setDisplayedText] = useState('')
+  const indexRef = useRef(0)
 
   const currentLine = INTRO_SEQUENCE[lineIndex]
   const isLastLine = lineIndex === INTRO_SEQUENCE.length - 1
 
+  // ── Q137: TYPEWRITER CHIRPS FOR INTRO ────────────────────
+  useEffect(() => {
+    setDisplayedText('')
+    indexRef.current = 0
+    const text = currentLine.text
+
+    const interval = setInterval(() => {
+      indexRef.current++
+      if (indexRef.current <= text.length) {
+        setDisplayedText(text.slice(0, indexRef.current))
+        const char = text[indexRef.current - 1]
+        if (char && char.trim()) {
+          const pitchOffset = ((indexRef.current % 4) - 1.5) * 0.15
+          playDialogueBlip(pitchOffset)
+        }
+      } else {
+        clearInterval(interval)
+      }
+    }, 40)
+
+    return () => clearInterval(interval)
+  }, [lineIndex, currentLine.text, playDialogueBlip])
+
   const finishIntro = useCallback(() => {
     setVisible(false)
-    // Small delay lets the fade-out CSS transition play before
-    // fully unmounting and handing control to the visitor
     setTimeout(() => {
       setIntroComplete(true)
       setTourActive(true) // Guided tour begins immediately after intro
+      trackEvent('tour_started')
     }, 400)
-  }, [setIntroComplete, setTourActive])
+  }, [setIntroComplete, setTourActive, trackEvent])
 
   const advance = useCallback(() => {
+    playTypewriterTap()
     if (isLastLine) {
       finishIntro()
     } else {
       setLineIndex((i) => i + 1)
     }
-  }, [isLastLine, finishIntro])
+  }, [isLastLine, finishIntro, playTypewriterTap])
 
   // ── AUTO-DISMISS AFTER 7 SECONDS ────────────────────────
   // Per spec: visitor can click through manually, OR it
@@ -73,8 +102,8 @@ export default function IntroDialogue() {
 
         {/* Dialogue panel */}
         <div className="bg-white border-2 border-black px-6 py-5 flex items-center justify-between gap-4 mt-0">
-  <p className="text-black font-mono text-lg leading-relaxed">
-    {currentLine.text}
+  <p className="text-black font-mono text-lg leading-relaxed min-h-[2.5rem]">
+    {displayedText}
   </p>
   <button
     onClick={advance}

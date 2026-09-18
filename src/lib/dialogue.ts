@@ -97,6 +97,20 @@ export const TOUR_WAYPOINTS: TourWaypoint[] = [
       },
     ],
   },
+  {
+    // Q80: Loop back to The Hub to complete the full spherical tour
+    position: WORLD_COORDINATES['/'].spawnPoint,
+    lines: [
+      {
+        text: "We've walked the whole loop... thank you for visiting BabWorld.",
+        gesture: 'wave',
+      },
+      {
+        text: "Feel free to explore freely or grab a coffee at Joe's.",
+        gesture: 'idle',
+      },
+    ],
+  },
 ]
 
 // ─── NPC DIALOGUES ────────────────────────────────────────
@@ -184,6 +198,14 @@ export const SPECIAL_DIALOGUES = {
   '404': {
     text: "This isn't on the map.",
     gesture: 'idle' as GestureType,
+  },
+  sketch_pad: {
+    text: "Ah, you found my old field sketchbook! Most of these architectural ideas started as messy pencil scribbles.",
+    gesture: 'acknowledge' as GestureType,
+  },
+  crane_nest: {
+    text: "Look at that—the orbital cranes made a nest up here! They seem to like the view of the cafe terrace.",
+    gesture: 'point' as GestureType,
   },
 }
 

@@ -1,0 +1,44 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - 'feature/**'
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  quality-gate:
+    name: Lint, Test, Validate & Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install Dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Validate MDX Content Frontmatter
+        run: pnpm validate:content
+
+      - name: Run Spherical Math Unit Tests
+        run: pnpm test
+
+      - name: TypeScript Typecheck
+        run: pnpm exec tsc --noEmit
+
+      - name: Generate RSS & Production Build
+        run: pnpm build

@@ -13,20 +13,30 @@ export default function InteractiveProps() {
   const position = useWorldStore((s) => s.position)
   const isReading = useWorldStore((s) => s.isReading)
   const setActivePanel = useWorldStore((s) => s.setActivePanel)
+  const setNearbyPropId = useWorldStore((s) => s.setNearbyPropId)
 
   const { findNearestProp } = useNearbyProps()
   const nearestPropRef = useRef<PropLocation | null>(null)
 
   useFrame(() => {
     if (isReading) {
-      nearestPropRef.current = null
+      if (nearestPropRef.current !== null) {
+        nearestPropRef.current = null
+        setNearbyPropId(null)
+      }
       const hint = document.getElementById('interact-hint')
       if (hint) hint.style.opacity = '0'
       return
     }
 
     const nearest = findNearestProp(position)
-    nearestPropRef.current = nearest
+    const prevId = nearestPropRef.current?.panelId ?? null
+    const newId = nearest?.panelId ?? null
+
+    if (prevId !== newId) {
+      nearestPropRef.current = nearest
+      setNearbyPropId(newId)
+    }
 
     const hint = document.getElementById('interact-hint')
     if (hint) hint.style.opacity = nearest ? '1' : '0'

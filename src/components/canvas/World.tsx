@@ -2,25 +2,26 @@
 
 import { useMemo } from 'react'
 import { DataTexture, RedFormat } from 'three'
-import { Physics, RigidBody, CuboidCollider } from '@react-three/rapier'
+import { Physics, RigidBody, BallCollider } from '@react-three/rapier'
 import VisitorController from './VisitorController'
 import AbdulrahmanController from './AbdulrahmanController'
 import TriggerZones from './TriggerZones'
 import Environment from './Environment'
 import OryzonGate from './OryzonGate'
+import RadialGravityField from './RadialGravityField'
 import {
   GRAVITY,
-  GROUND_SIZE,
   TOON_GRADIENT_STEPS,
   GROUND_COLOR,
+  PLANET_RADIUS,
+  SPHERE_SEGMENTS,
 } from '@/lib/constants'
 import InteractiveProps from './InteractiveProps'
-
-
-
+import { useWorldStore } from '@/store/useWorldStore'
 
 
 export default function World() {
+  const debugMode = useWorldStore((s) => s.debugMode)
   // ── 4-STEP GRAYSCALE GRADIENT ─────────────────────────
   // This DataTexture is what converts MeshToonMaterial from
   // smooth shading into hard cel-shading steps.
@@ -41,28 +42,29 @@ export default function World() {
     <Physics
       timeStep="vary"
       gravity={[0, GRAVITY, 0]}
-      // Uncomment to see collider wireframes in dev:
-      // debug
+      debug={debugMode}
     >
-      {/* ── GROUND PLANE ────────────────────────────
-          Flat, massive plane at Y = 0.
-          Characters spawn at Y = 1 (above this).
-          CuboidCollider is a thin box so physics works correctly
-          — a raw plane mesh has no physics volume.
+      {/* ── RADIAL GRAVITY FIELD ──────────────────────
+          Replaces the linear [0, -30, 0] gravity with
+          a per-body force pulling toward the sphere
+          center at [0, 0, 0]. Works on every dynamic
+          rigid body each physics tick.
+      ──────────────────────────────────────────────── */}
+      <RadialGravityField />
+
+      {/* ── SPHERICAL PLANET ──────────────────────────
+          50m diameter sphere (R=25) centered at origin.
+          Characters walk on the outside surface.
+          BallCollider matches the sphere geometry exactly.
       ──────────────────────────────────────────────── */}
       <OryzonGate />
       <RigidBody type="fixed" name="ground">
-       
-
-          <mesh rotation={[-Math.PI / 2, 0, 0]} receiveShadow position={[0, 0, 0]}>
-          <planeGeometry args={[GROUND_SIZE, GROUND_SIZE]} />
+        <mesh receiveShadow>
+          <sphereGeometry args={[PLANET_RADIUS, SPHERE_SEGMENTS, SPHERE_SEGMENTS]} />
           <meshToonMaterial color={GROUND_COLOR} gradientMap={gradientMap} />
         </mesh>
-        {/* Thin physics box just below visual plane */}
-        <CuboidCollider
-          args={[GROUND_SIZE / 2, 0.05, GROUND_SIZE / 2]}
-          position={[0, -0.05, 0]}
-        />
+        {/* Physics collider matching the visual sphere */}
+        <BallCollider args={[PLANET_RADIUS]} />
       </RigidBody>
 
       {/* ── CHARACTERS ──────────────────────────────── */}
@@ -78,7 +80,6 @@ export default function World() {
           toon shading step texture.
       ──────────────────────────────────────────────── */}
       <Environment gradientMap={gradientMap} />
-      {/* // Add inside <Physics>, alongside <TriggerZones /> and <Environment />: */}
       <InteractiveProps />
     </Physics>
   )

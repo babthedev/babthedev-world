@@ -8,12 +8,22 @@ import InteractHint from '@/ui/InteractHint'
 import HUDIcons from '@/ui/HUDIcons'
 import DistrictLabel from '@/ui/DistrictLabel'
 import ReadingPanel from '@/ui/ReadingPanel'
+import SphereCompass from '@/ui/SphereCompass'
+import DebugOverlay from '@/ui/DebugOverlay'
+import InkIrisTransition from '@/ui/InkIrisTransition'
+import ContactModal from '@/ui/ContactModal'
+import GuestbookModal from '@/ui/GuestbookModal'
+import PassportStampToast from '@/ui/PassportStampToast'
+import ColophonModal from '@/ui/ColophonModal'
+import WebGLErrorBoundary from '@/components/WebGLErrorBoundary'
 import { useTourLogic } from '@/hooks/useTourLogic'
+import { usePageVisibility } from '@/hooks/usePageVisibility'
 
 export default function GlobalCanvas() {
   // Global tour-resume logic — lives here since this component
   // is always mounted for the lifetime of the app
   useTourLogic()
+  usePageVisibility()
 
   console.log('GlobalCanvas rendering')
 
@@ -36,20 +46,29 @@ export default function GlobalCanvas() {
               </div>
             }
           >
-            <Scene />
+            <WebGLErrorBoundary>
+              <Scene />
+            </WebGLErrorBoundary>
           </Suspense>
         </KeyboardControls>
       </div>
 
       {/* ── 2D UI LAYER ──────────────────────────────────── 
           All siblings of Canvas, not children — none use useFrame.
-          Layered by z-index: hints (20) < labels (20) < panel (30) < intro (30)
+          Layered by z-index: hints (20) < labels (20) < panel (30) < intro (30) < iris (50)
       ──────────────────────────────────────────────────── */}
       <InteractHint />
       <DistrictLabel />
       <HUDIcons />
       <ReadingPanel />
+      <ContactModal />
+      <GuestbookModal />
+      <PassportStampToast />
+      <ColophonModal />
       <IntroDialogue />
+      <SphereCompass />
+      <DebugOverlay />
+      <InkIrisTransition />
     </div>
   )
 }

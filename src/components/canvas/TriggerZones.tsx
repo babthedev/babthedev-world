@@ -5,10 +5,10 @@ import { RigidBody, CuboidCollider } from '@react-three/rapier'
 import { useWorldStore } from '@/store/useWorldStore'
 import { ZONE_DIALOGUES, calcDialogueDuration } from '@/lib/dialogue'
 import { DISTRICT_SENSOR_HALF_EXTENT } from '@/lib/constants'
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
-
-
+import { flatToSphere } from '@/lib/surfacePlacement'
+import { useAudioManager } from '@/hooks/useAudioManager'
 
 
 export default function TriggerZones() {
@@ -19,6 +19,7 @@ export default function TriggerZones() {
   const setCurrentDialogue = useWorldStore((s) => s.setCurrentDialogue)
   const setDistrictLabelVisible = useWorldStore((s) => s.setDistrictLabelVisible)
   const visitedDistricts = useWorldStore((s) => s.visitedDistricts)
+  const { setDistrict, playArrivalChime } = useAudioManager()
 
   useEffect(() => {
     if (typeof window === 'undefined') return
@@ -29,13 +30,26 @@ export default function TriggerZones() {
     }
   }, [])
 
+  // Pre-compute sphere-projected sensor positions
+  const sphereDistricts = useMemo(() => {
+    return Object.values(WORLD_COORDINATES).map((district) => {
+      const { position, quaternion } = flatToSphere(
+        district.sensorPoint[0],
+        district.sensorPoint[2],
+        district.sensorPoint[1]
+      )
+      return { ...district, spherePosition: position, sphereQuaternion: quaternion }
+    })
+  }, [])
+
   return (
     <>
-      {Object.values(WORLD_COORDINATES).map((district) => (
+      {sphereDistricts.map((district) => (
         <RigidBody
           key={district.path}
           type="fixed"
-          position={district.sensorPoint}
+          position={district.spherePosition}
+          quaternion={district.sphereQuaternion}
           sensor
         >
           <CuboidCollider
@@ -52,8 +66,10 @@ export default function TriggerZones() {
               // Update spatial + browser URL state (shallow route)
               router.push(district.path, { scroll: false })
               setCurrentDistrict(district.path)
+              setDistrict(district.path)
+              playArrivalChime()
               setDistrictLabelVisible(true)
-              setTimeout(() => setDistrictLabelVisible(false), 2000)
+              setTimeout(() => setDistrictLabelVisible(false), 4000)
 
               // Zone acknowledgement dialogue — different if revisiting
               const alreadyVisited = visitedDistricts.includes(district.path)
