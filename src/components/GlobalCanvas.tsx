@@ -14,6 +14,7 @@ import InkIrisTransition from '@/ui/InkIrisTransition'
 import ContactModal from '@/ui/ContactModal'
 import GuestbookModal from '@/ui/GuestbookModal'
 import PassportStampToast from '@/ui/PassportStampToast'
+import ColophonModal from '@/ui/ColophonModal'
 import WebGLErrorBoundary from '@/components/WebGLErrorBoundary'
 import { useTourLogic } from '@/hooks/useTourLogic'
 import { usePageVisibility } from '@/hooks/usePageVisibility'
@@ -63,6 +64,7 @@ export default function GlobalCanvas() {
       <ContactModal />
       <GuestbookModal />
       <PassportStampToast />
+      <ColophonModal />
       <IntroDialogue />
       <SphereCompass />
       <DebugOverlay />

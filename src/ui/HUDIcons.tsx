@@ -106,6 +106,18 @@ export default function HUDIcons() {
         </button>
 
         <button
+          onClick={() => {
+            playClick()
+            setActivePanel('colophon')
+          }}
+          aria-label="Colophon and credits"
+          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
+          style={{ width: HUD_ICON_SIZE, height: HUD_ICON_SIZE }}
+        >
+          <InfoIcon />
+        </button>
+
+        <button
           onClick={toggleMute}
           aria-label={muted ? 'Unmute' : 'Mute'}
           className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)]"
@@ -186,6 +198,16 @@ function MapEntry({
 }
 
 // ─── ICONS (inline SVG, monochrome, 2px stroke) ────────────
+
+function InfoIcon() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  )
+}
 
 function MailIcon() {
   return (

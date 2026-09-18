@@ -268,6 +268,20 @@ export default function ReadingPanel() {
                   </a>
                 </div>
               )}
+
+              {/* Q89: Colophon & Credits footer link */}
+              <div className="mt-16 pt-6 border-t border-black/20 flex items-center justify-between font-mono text-[11px] text-black/50">
+                <span>BABWORLD SPHERICAL REALM</span>
+                <button
+                  onClick={() => {
+                    playClick()
+                    setActivePanel('colophon')
+                  }}
+                  className="underline hover:text-black transition-colors cursor-pointer"
+                >
+                  Colophon & Credits ↗
+                </button>
+              </div>
             </article>
           )}
         </div>
