@@ -19,12 +19,17 @@ export default function CameraController() {
   const visitorPos = useWorldStore((state) => state.position)
   const facingAngle = useWorldStore((state) => state.facingAngle)
   const isReading = useWorldStore((state) => state.isReading)
+  const currentDialogue = useWorldStore((state) => state.currentDialogue)
+  const npcDialogue = useWorldStore((state) => state.npcDialogue)
   const freeFlyMode = useWorldStore((state) => state.freeFlyMode)
+
+  const isDialogueActive = currentDialogue !== null || npcDialogue !== null
 
   // Camera tracks its OWN smoothed angle — not the character's live angle.
   // This creates the "camera lags slightly behind the turn" feel
   // that messenger.abeto.co has.
   const smoothedAngle = useRef(0)
+  const dialogueGlide = useRef(0)
 
   const raycaster = useRef(new Raycaster())
   const fadedMeshes = useRef<Set<Mesh>>(new Set())
@@ -44,43 +49,71 @@ export default function CameraController() {
     const { forward: tangentForward, right: tangentRight } = getTangentBasis(_normal)
 
     // Smooth the camera's angle toward visitor's facing angle
-    // Lower value = more lag = heavier camera feel
     smoothedAngle.current = MathUtils.lerp(
       smoothedAngle.current,
       facingAngle,
       3.5 * delta
     )
 
-    const a = smoothedAngle.current
+    // Q143: Smoothly glide inward 1m and orbit 20° (0.35 rad) during dialogue
+    dialogueGlide.current = MathUtils.lerp(
+      dialogueGlide.current,
+      isDialogueActive ? 1 : 0,
+      3.5 * delta
+    )
+
+    const targetDist = CAMERA_BACK - dialogueGlide.current * 1.0
+    const dialogueAngleOffset = dialogueGlide.current * 0.35
+    const a = smoothedAngle.current + dialogueAngleOffset
 
     // "Behind" direction in tangent plane:
-    // facingAngle is relative to tangentForward/tangentRight basis
-    // so we compose the behind direction from those vectors
     _behindDir
       .copy(tangentForward).multiplyScalar(-Math.cos(a))
       .add(tangentRight.clone().multiplyScalar(-Math.sin(a)))
 
-    // When reading panel is open: shift camera left
+    // Q144: When reading panel is open: shift camera 1.5m left
     // so both characters remain visible in the 60% uncovered screen
     const panShift = isReading
-      ? tangentRight.clone().multiplyScalar(-3)
+      ? tangentRight.clone().multiplyScalar(-1.5)
       : new Vector3(0, 0, 0)
 
     // Camera position:
-    // Start at character position,
-    // go BACK behind them in tangent plane,
-    // go HEIGHT above them along surface normal
     _desired.set(vx, vy, vz)
-      .add(_behindDir.clone().multiplyScalar(CAMERA_BACK))
+      .add(_behindDir.clone().multiplyScalar(targetDist))
       .add(_normal.clone().multiplyScalar(CAMERA_HEIGHT))
       .add(panShift)
-
-    // Smooth camera position
-    state.camera.position.lerp(_desired, CAMERA_LERP * delta)
 
     // Look at visitor's mid-body (1 unit above position along normal)
     _lookAt.set(vx, vy, vz)
       .add(_normal.clone().multiplyScalar(1.0))
+
+    // ── Q141: SPRING-ARM OCCLUSION RAYCAST ──────────────
+    // Pulls camera forward 0.3m off blocking walls to avoid clipping
+    const camRayDir = _desired.clone().sub(_lookAt).normalize()
+    const maxCamDist = _desired.distanceTo(_lookAt)
+    raycaster.current.set(_lookAt, camRayDir)
+    raycaster.current.far = maxCamDist
+
+    const hits = raycaster.current.intersectObjects(scene.children, true)
+    let closestBlockingDist = maxCamDist
+    for (const hit of hits) {
+      if (
+        hit.object instanceof Mesh &&
+        hit.object.name !== 'ground' &&
+        !hit.object.userData?.isCharacter
+      ) {
+        if (hit.distance < closestBlockingDist && hit.distance > 0.8) {
+          closestBlockingDist = Math.max(1.2, hit.distance - 0.3)
+        }
+      }
+    }
+
+    if (closestBlockingDist < maxCamDist) {
+      _desired.copy(_lookAt).add(camRayDir.clone().multiplyScalar(closestBlockingDist))
+    }
+
+    // Smooth camera position
+    state.camera.position.lerp(_desired, CAMERA_LERP * delta)
     state.camera.lookAt(_lookAt)
 
     // Set camera "up" vector to surface normal so the horizon
@@ -95,10 +128,10 @@ export default function CameraController() {
     )
     raycaster.current.far = _desired.distanceTo(_lookAt)
 
-    const hits = raycaster.current.intersectObjects(scene.children, true)
+    const fadeHits = raycaster.current.intersectObjects(scene.children, true)
     const currentlyBlocking = new Set<Mesh>()
 
-    for (const hit of hits) {
+    for (const hit of fadeHits) {
       if (hit.object instanceof Mesh && hit.object.name !== 'ground') {
         currentlyBlocking.add(hit.object)
         const mat = hit.object.material as MeshToonMaterial
