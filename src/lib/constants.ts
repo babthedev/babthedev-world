@@ -25,7 +25,7 @@ export const CAMERA_NEAR = 0.1
 export const CAMERA_FAR = 200
 
 // --- TOON SHADER ---
-export const TOON_GRADIENT_STEPS = new Uint8Array([180, 210, 235, 255])
+export const TOON_GRADIENT_STEPS = new Uint8Array([80, 150, 210, 255])
 export const OUTLINE_COLOR = '#0B0B0B'
 export const OUTLINE_THICKNESS = 1.4          // pixels, used by Sobel effect
 export const OUTLINE_DEPTH_THRESHOLD = 0.0008 // edge sensitivity
@@ -55,8 +55,8 @@ export const DISTRICT_SENSOR_HALF_EXTENT = 5
 // --- RENDERING ---
 export const MAX_PIXEL_RATIO = 1.5
 export const SHADOW_MAP_SIZE = 2048
-export const FOG_NEAR = 25
-export const FOG_FAR = 90
+export const FOG_NEAR = 15
+export const FOG_FAR = 40
 
 // --- AMBIENT LIGHT ---
 export const AMBIENT_INTENSITY = 0.4
