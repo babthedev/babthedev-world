@@ -194,7 +194,7 @@ export default function Scene() {
         <SMAA />
         <SobelOutline />
         <PaperGrain />
-        {!isLowPower && <Squigglevision />}
+        {!isLowPower ? <Squigglevision /> : <></>}
       </EffectComposer>
     </Canvas>
   )

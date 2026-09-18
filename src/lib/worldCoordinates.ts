@@ -178,6 +178,13 @@ export const PROP_LOCATIONS: PropLocation[] = [
     panelId: 'essay-02',
     district: '/essays',
   },
+  {
+    id: '404-flicker-lamp',
+    position: [0, 0, 99],
+    model: 'lamp-post.glb',
+    interactive: false,
+    district: '/404',
+  },
 ]
 
 // ─── NPC LOCATIONS ────────────────────────────────────────
@@ -225,13 +232,6 @@ export const NPC_LOCATIONS: NPCLocation[] = [
     district: '/bio',
     dialogueKey: '', // ambient — no dialogueKey means no interaction
     modelUrl: '/joe.vrm',
-  },
-  {
-    id: '404-flicker-lamp',
-    position: [0, 0, 99],
-    model: 'lamp-post.glb',
-    interactive: false,
-    district: '/404',
   },
 ]
 

@@ -21,9 +21,16 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
     const [vrm, setVrm] = useState<any>(null)
     const isVRM = url.endsWith('.vrm')
 
-    const { scene, animations } = useGLTF(url, isVRM ? {
-      plugins: [VRMLoaderPlugin],
-    } : undefined)
+    const { scene, animations } = useGLTF(
+      url,
+      undefined,
+      undefined,
+      isVRM
+        ? (loader: any) => {
+            loader.register((parser: any) => new VRMLoaderPlugin(parser))
+          }
+        : undefined
+    )
 
     const { actions, mixer: _mixer } = useAnimations(animations, scene)
 
@@ -81,7 +88,10 @@ CharacterModel.displayName = 'CharacterModel'
 
 export default CharacterModel
 
-// Preload both characters at module load time
-useGLTF.preload('/abdulrahman.vrm', { plugins: [VRMLoaderPlugin] })
-useGLTF.preload('/visitor.vrm', { plugins: [VRMLoaderPlugin] })
-useGLTF.preload('/joe.vrm', { plugins: [VRMLoaderPlugin] })
+// Preload characters at module load time
+const registerVRM = (loader: any) => {
+  loader.register((parser: any) => new VRMLoaderPlugin(parser))
+}
+useGLTF.preload('/abdulrahman.vrm', undefined, undefined, registerVRM)
+useGLTF.preload('/visitor.vrm', undefined, undefined, registerVRM)
+useGLTF.preload('/joe.vrm', undefined, undefined, registerVRM)
