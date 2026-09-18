@@ -4,12 +4,17 @@
 // ============================================================
 
 // --- PHYSICS ---
-export const GRAVITY = -30
+export const GRAVITY = 0                       // Linear gravity disabled; radial gravity used instead
+export const RADIAL_GRAVITY = 35               // m/s² pulling toward sphere center
 export const VISITOR_SPEED = 5
 export const ABDULRAHMAN_SPEED = 5
 export const TETHER_DISTANCE = 2
 export const CATCH_UP_DISTANCE = 15
 export const LINEAR_DAMPING = 4
+
+// --- SPHERICAL WORLD ---
+export const PLANET_RADIUS = 25                // 50m diameter sphere
+export const SPHERE_SEGMENTS = 128             // Smooth sphere mesh resolution
 
 // --- CAMERA ---
 export const CAMERA_HEIGHT = 3
