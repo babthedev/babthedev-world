@@ -6,8 +6,9 @@
 // --- PHYSICS ---
 export const GRAVITY = 0                       // Linear gravity disabled; radial gravity used instead
 export const RADIAL_GRAVITY = 35               // m/s² pulling toward sphere center
-export const VISITOR_SPEED = 5
-export const ABDULRAHMAN_SPEED = 5
+export const VISITOR_SPEED = 3                 // Base speed (Q18: 3 units/sec, ~52s planet lap)
+export const VISITOR_BOOST_SPEED = 4           // Subtle boost after 10s of wandering without interaction
+export const ABDULRAHMAN_SPEED = 3             // Matches visitor base speed
 export const TETHER_DISTANCE = 2
 export const CATCH_UP_DISTANCE = 15
 export const LINEAR_DAMPING = 4

@@ -12,6 +12,7 @@ import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
 import { useMobileControls } from '@/hooks/useMobileControls'
 import {
   VISITOR_SPEED,
+  VISITOR_BOOST_SPEED,
   TETHER_DISTANCE,
   LINEAR_DAMPING,
   VISITOR_COLOR,
@@ -73,6 +74,8 @@ export default function VisitorController() {
 
   // Track the character's heading (yaw) on the tangent plane
   const yawRef = useRef(0)
+  // Track continuous locomotion time for subtle speed boost (Q18)
+  const movingDurationRef = useRef(0)
 
   // ── DEEP LINK SPAWN ────────────────────────────────
   useEffect(() => {
@@ -107,6 +110,15 @@ export default function VisitorController() {
       setTourActive(false)
     }
 
+    // ── SPEED BOOST (Q18: 3 units/sec base, boosts to 4 after 10s non-interaction) ──
+    if (hasInput && !isReading && !isTourActive) {
+      movingDurationRef.current += delta
+    } else {
+      movingDurationRef.current = Math.max(0, movingDurationRef.current - delta * 2)
+    }
+    const boostFactor = Math.min(1, Math.max(0, (movingDurationRef.current - 10) / 2))
+    const currentSpeed = VISITOR_SPEED + (VISITOR_BOOST_SPEED - VISITOR_SPEED) * boostFactor
+
     _direction.set(0, 0, 0)
 
     // ── READING MODE: ignore all movement input ───────
@@ -133,7 +145,7 @@ export default function VisitorController() {
         _direction.add(camTangent.clone().multiplyScalar(-touch.z))
         _direction.add(camRight.clone().multiplyScalar(touch.x))
         if (_direction.lengthSq() > 0) {
-          _direction.normalize().multiplyScalar(VISITOR_SPEED)
+          _direction.normalize().multiplyScalar(currentSpeed)
         }
       }
     } else {
@@ -155,7 +167,7 @@ export default function VisitorController() {
       if (left) _direction.sub(_right)
 
       if (_direction.lengthSq() > 0) {
-        _direction.normalize().multiplyScalar(VISITOR_SPEED)
+        _direction.normalize().multiplyScalar(currentSpeed)
       }
     }
 
@@ -199,7 +211,7 @@ export default function VisitorController() {
     modelRef.current.quaternion.copy(_qAlign)
 
     // ── ANIMATION STATE ─────────────────────────────────
-    const nextAnim = updateFromVelocity(speed, VISITOR_SPEED) as 'idle' | 'walk'
+    const nextAnim = updateFromVelocity(speed, currentSpeed) as 'idle' | 'walk'
     if (nextAnim !== animStateRef.current) {
       animStateRef.current = nextAnim
       setAnimName(nextAnim)
