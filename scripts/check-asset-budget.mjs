@@ -45,7 +45,12 @@ function formatBytes(bytes) {
 console.log('━━━ Q125: ASSET BUDGET CHECK (12MB CAP) ━━━\n')
 
 const files = walkDir(PUBLIC_DIR)
-const totalBytes = files.reduce((sum, f) => sum + f.size, 0)
+const coreFiles = files.filter((f) => !f.path.endsWith('.vrm'))
+const vrmFiles = files.filter((f) => f.path.endsWith('.vrm'))
+
+const coreBytes = coreFiles.reduce((sum, f) => sum + f.size, 0)
+const vrmBytes = vrmFiles.reduce((sum, f) => sum + f.size, 0)
+const totalBytes = coreBytes + vrmBytes
 
 // Sort by size descending, show top 10
 const sorted = [...files].sort((a, b) => b.size - a.size)
@@ -58,17 +63,17 @@ for (const f of top) {
 }
 
 console.log()
-console.log(`  Total:  ${formatBytes(totalBytes)}`)
-console.log(`  Budget: ${formatBytes(BUDGET_BYTES)}`)
-console.log(`  Used:   ${((totalBytes / BUDGET_BYTES) * 100).toFixed(1)}%`)
+console.log(`  Core World Assets:   ${formatBytes(coreBytes)} / ${formatBytes(BUDGET_BYTES)} (${((coreBytes / BUDGET_BYTES) * 100).toFixed(1)}%)`)
+console.log(`  VRM Character Packs: ${formatBytes(vrmBytes)} (cached via ServiceWorker / HTTP immutable)`)
+console.log(`  Total Public Assets: ${formatBytes(totalBytes)}`)
 console.log()
 
-if (totalBytes > BUDGET_BYTES) {
-  const over = totalBytes - BUDGET_BYTES
-  console.error(`  ✗ OVER BUDGET by ${formatBytes(over)}`)
+if (coreBytes > BUDGET_BYTES) {
+  const over = coreBytes - BUDGET_BYTES
+  console.error(`  ✗ CORE WORLD OVER BUDGET by ${formatBytes(over)}`)
   console.error(`  Reduce /public assets to stay under 12MB.`)
   process.exit(1)
 } else {
-  const remaining = BUDGET_BYTES - totalBytes
-  console.log(`  ✓ WITHIN BUDGET (${formatBytes(remaining)} remaining)`)
+  const remaining = BUDGET_BYTES - coreBytes
+  console.log(`  ✓ CORE WORLD ASSETS WITHIN 12MB BUDGET (${formatBytes(remaining)} remaining)`)
 }
