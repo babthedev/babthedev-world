@@ -52,7 +52,11 @@ const _tangentVel = new Vector3()
 const _posVec = new Vector3()
 const _normal = new Vector3()
 const _upRef = new Vector3(0, 1, 0)
+const _currentVel = new Vector3()
+const _visVec = new Vector3()
+const _faceDir = new Vector3()
 const _qAlign = new Quaternion()
+const _qYaw = new Quaternion()
 
 // Spawn next to visitor on north pole, offset slightly on the tangent plane
 const SPAWN_HEIGHT = PLANET_RADIUS + CHARACTER_CAPSULE_HEIGHT
@@ -84,6 +88,7 @@ export default function AbdulrahmanController() {
   const dialogueTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastWaypoint = useRef(-1)
   const yawRef = useRef(0)
+  const lastDispatchedPos = useRef(new Vector3(...SPAWN_POS))
   const isWaitingForVisitorRef = useRef(false)
   const footstepDistanceRef = useRef(0.4)
 
@@ -155,12 +160,12 @@ export default function AbdulrahmanController() {
       // Waiting animation handled via animState below — no movement
     } else if (isTourActive) {
       // ── GUIDED TOUR: follow waypoint array with adaptive waiting (Q117) ──
-      const visVec = new Vector3(
+      _visVec.set(
         visitorPosition[0],
         visitorPosition[1],
         visitorPosition[2]
       )
-      const distToVisitor = _posVec.distanceTo(visVec)
+      const distToVisitor = _posVec.distanceTo(_visVec)
 
       // Q117: If separation exceeds 5m, pause and face visitor; resume when visitor <= 2.5m
       if (distToVisitor > 5.0) {
@@ -171,7 +176,8 @@ export default function AbdulrahmanController() {
 
       if (isWaitingForVisitorRef.current) {
         // Turn to face visitor while waiting
-        const faceVisDir = projectOntoTangentPlane(visVec.clone().sub(_posVec), _normal)
+        _faceDir.copy(_visVec).sub(_posVec)
+        const faceVisDir = projectOntoTangentPlane(_faceDir, _normal)
         if (faceVisDir.lengthSq() > 0.01) {
           faceVisDir.normalize()
           yawRef.current = Math.atan2(
@@ -219,26 +225,26 @@ export default function AbdulrahmanController() {
       }
     } else {
       // ── FREE ROAM: follow visitor, offset to the right ─
-      const visVec = new Vector3(
+      _visVec.set(
         visitorPosition[0],
         visitorPosition[1],
         visitorPosition[2]
       )
       // Offset along the tangent "right" direction on the sphere surface
-      const offsetTarget = visVec.clone().add(tangentRight.clone().multiplyScalar(CHARACTER_OFFSET_X))
-      const dist = _posVec.distanceTo(offsetTarget)
+      _visVec.addScaledVector(tangentRight, CHARACTER_OFFSET_X)
+      const dist = _posVec.distanceTo(_visVec)
 
       // Catch-up teleport if too far
       if (dist > CATCH_UP_DISTANCE) {
         bodyRef.current.setTranslation(
-          { x: offsetTarget.x, y: offsetTarget.y, z: offsetTarget.z },
+          { x: _visVec.x, y: _visVec.y, z: _visVec.z },
           true
         )
         return
       }
 
       if (dist > TETHER_DISTANCE) {
-        _direction.copy(offsetTarget).sub(_posVec)
+        _direction.copy(_visVec).sub(_posVec)
         _direction.copy(projectOntoTangentPlane(_direction, _normal))
         _direction.normalize().multiplyScalar(ABDULRAHMAN_SPEED)
       }
@@ -247,13 +253,36 @@ export default function AbdulrahmanController() {
     // ── APPLY TANGENT-PLANE VELOCITY ─────────────────────
     _tangentVel.copy(projectOntoTangentPlane(_direction, _normal))
 
-    const currentVel = bodyRef.current.linvel()
-    const currentVelVec = new Vector3(currentVel.x, currentVel.y, currentVel.z)
-    const radialSpeed = currentVelVec.dot(_normal)
+    // ── SURFACE CLAMP & RADIAL SPEED ─────────────────────
+    const distFromCenter = _posVec.length()
+    const targetSurfaceDist = PLANET_RADIUS + CHARACTER_CAPSULE_HEIGHT
+    if (distFromCenter < targetSurfaceDist) {
+      const pushDist = targetSurfaceDist - distFromCenter
+      bodyRef.current.setTranslation(
+        {
+          x: pos.x + _normal.x * pushDist,
+          y: pos.y + _normal.y * pushDist,
+          z: pos.z + _normal.z * pushDist,
+        },
+        true
+      )
+    }
 
-    const finalVel = _tangentVel.clone().add(_normal.clone().multiplyScalar(radialSpeed))
+    // Read current velocity from physics body to preserve radial component (gravity)
+    const vel = bodyRef.current.linvel()
+    _currentVel.set(vel.x, vel.y, vel.z)
+    let radialSpeed = _currentVel.dot(_normal)
+    if (distFromCenter <= targetSurfaceDist + 0.05) {
+      radialSpeed = Math.max(0, radialSpeed)
+    }
+
+    // Final velocity = tangent movement + radial component (in-place math)
     bodyRef.current.setLinvel(
-      { x: finalVel.x, y: finalVel.y, z: finalVel.z },
+      {
+        x: _tangentVel.x + _normal.x * radialSpeed,
+        y: _tangentVel.y + _normal.y * radialSpeed,
+        z: _tangentVel.z + _normal.z * radialSpeed,
+      },
       true
     )
 
@@ -269,7 +298,7 @@ export default function AbdulrahmanController() {
 
     // Align body "up" to surface normal + apply yaw
     _qAlign.setFromUnitVectors(_upRef, _normal)
-    const qYaw = new Quaternion().setFromAxisAngle(_normal, yawRef.current)
+    const qYaw = _qYaw.setFromAxisAngle(_normal, yawRef.current)
     _qAlign.premultiply(qYaw)
     modelRef.current.quaternion.copy(_qAlign)
 
@@ -294,7 +323,11 @@ export default function AbdulrahmanController() {
       footstepDistanceRef.current = 0.4
     }
 
-    setAbdulrahmanPosition([pos.x, pos.y, pos.z])
+    // ── SYNC STORE (Throttled to avoid 60fps re-render storms across store subscribers) ──
+    if (_posVec.distanceToSquared(lastDispatchedPos.current) > 0.0004) {
+      lastDispatchedPos.current.copy(_posVec)
+      setAbdulrahmanPosition([pos.x, pos.y, pos.z])
+    }
   })
 
   return (

@@ -51,7 +51,7 @@ export default function Scene() {
         })
       }}
       camera={{
-        position: [0, 4, -6],
+        position: [0, 29, -6],
         fov: CAMERA_FOV,
         near: CAMERA_NEAR,
         far: CAMERA_FAR,
@@ -110,12 +110,7 @@ export default function Scene() {
         <FootstepPuffs />
       </Suspense>
 
-      {/* ── POST-PROCESSING ──────────────────────────────
-          SMAA: subpixel morphological AA that respects toon edges.
-          SobelOutline: depth-based edge detection draws ink outlines.
-          PaperGrain: subtle film grain over the paper background.
-          Squigglevision: hand-drawn line wobble (skipped on low-power devices).
-      ──────────────────────────────────────────────────── */}
+      {/* ── POST-PROCESSING ────────────────────────────── */}
       <EffectComposer multisampling={0} enableNormalPass>
         <SMAA />
         <SobelOutline />

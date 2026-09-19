@@ -113,7 +113,7 @@ export default function NPCCharacter({ npc, gradientMap }: NPCCharacterProps) {
 
       {/* "..." thinking indicator — appears on proximity, before dialogue (non-ambient only) */}
       {!npc.ambient && state === 'thinking' && (
-        <Html position={[0, 2, 0]} center distanceFactor={8} occlude>
+        <Html position={[0, 2, 0]} center distanceFactor={8}>
           <div className="bg-black text-white border-2 border-white px-3 py-1.5 font-mono text-sm tracking-widest animate-pulse select-none">
             •••
           </div>

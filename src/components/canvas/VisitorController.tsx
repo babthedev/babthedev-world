@@ -48,7 +48,9 @@ const _camDir = new Vector3()
 const _posVec = new Vector3()
 const _normal = new Vector3()
 const _upRef = new Vector3(0, 1, 0)
+const _currentVel = new Vector3()
 const _qAlign = new Quaternion()
+const _qYaw = new Quaternion()
 
 // Spawn on the north pole of the sphere (top), slightly above surface
 const SPAWN_HEIGHT = PLANET_RADIUS + CHARACTER_CAPSULE_HEIGHT
@@ -79,6 +81,8 @@ export default function VisitorController() {
 
   // Track the character's heading (yaw) on the tangent plane
   const yawRef = useRef(0)
+  const lastDispatchedYaw = useRef(0)
+  const lastDispatchedPos = useRef(new Vector3(...SPAWN_POS))
   // Track continuous locomotion time for subtle speed boost (Q18)
   const movingDurationRef = useRef(0)
   // Track accumulated stride distance for footsteps (Q139)
@@ -135,11 +139,11 @@ export default function VisitorController() {
       // no-op, character frozen
     } else if (isTourActive) {
       // ── GUIDED TOUR: follow Abdulrahman closely ─────
-      const abdulVec = new Vector3(abdulPos[0], abdulPos[1], abdulPos[2])
-      const distToAbdul = _posVec.distanceTo(abdulVec)
+      _forward.set(abdulPos[0], abdulPos[1], abdulPos[2])
+      const distToAbdul = _posVec.distanceTo(_forward)
 
       if (distToAbdul > TETHER_DISTANCE) {
-        _direction.copy(abdulVec).sub(_posVec)
+        _direction.copy(_forward).sub(_posVec)
         // Project follow direction onto the tangent plane
         _direction.copy(projectOntoTangentPlane(_direction, _normal))
         _direction.normalize().multiplyScalar(VISITOR_SPEED * 0.9)
@@ -150,9 +154,9 @@ export default function VisitorController() {
         // Use camera direction projected onto tangent plane for mobile
         state.camera.getWorldDirection(_camDir)
         const camTangent = projectOntoTangentPlane(_camDir, _normal).normalize()
-        const camRight = new Vector3().crossVectors(_normal, camTangent).normalize()
-        _direction.add(camTangent.clone().multiplyScalar(-touch.z))
-        _direction.add(camRight.clone().multiplyScalar(touch.x))
+        _right.crossVectors(_normal, camTangent).normalize()
+        _direction.addScaledVector(camTangent, -touch.z)
+        _direction.addScaledVector(_right, touch.x)
         if (_direction.lengthSq() > 0) {
           _direction.normalize().multiplyScalar(currentSpeed)
         }
@@ -185,14 +189,37 @@ export default function VisitorController() {
     // preserve the radial velocity component so gravity still works.
     _tangentVel.copy(projectOntoTangentPlane(_direction, _normal))
 
-    const currentVel = bodyRef.current.linvel()
-    const currentVelVec = new Vector3(currentVel.x, currentVel.y, currentVel.z)
-    const radialSpeed = currentVelVec.dot(_normal)
+    // ── SURFACE CLAMP & RADIAL SPEED ─────────────────────
+    // Ensures character never sinks below the planet surface
+    const distFromCenter = _posVec.length()
+    const targetSurfaceDist = PLANET_RADIUS + CHARACTER_CAPSULE_HEIGHT
+    if (distFromCenter < targetSurfaceDist) {
+      const pushDist = targetSurfaceDist - distFromCenter
+      bodyRef.current.setTranslation(
+        {
+          x: pos.x + _normal.x * pushDist,
+          y: pos.y + _normal.y * pushDist,
+          z: pos.z + _normal.z * pushDist,
+        },
+        true
+      )
+    }
 
-    // Final velocity = tangent movement + radial (gravity) component
-    const finalVel = _tangentVel.clone().add(_normal.clone().multiplyScalar(radialSpeed))
+    // Read current velocity from physics body to preserve radial component (gravity)
+    const vel = bodyRef.current.linvel()
+    _currentVel.set(vel.x, vel.y, vel.z)
+    let radialSpeed = _currentVel.dot(_normal)
+    if (distFromCenter <= targetSurfaceDist + 0.05) {
+      radialSpeed = Math.max(0, radialSpeed)
+    }
+
+    // Final velocity = tangent movement + radial component (in-place math)
     bodyRef.current.setLinvel(
-      { x: finalVel.x, y: finalVel.y, z: finalVel.z },
+      {
+        x: _tangentVel.x + _normal.x * radialSpeed,
+        y: _tangentVel.y + _normal.y * radialSpeed,
+        z: _tangentVel.z + _normal.z * radialSpeed,
+      },
       true
     )
 
@@ -208,13 +235,16 @@ export default function VisitorController() {
         facingDir.dot(tangentRight),
         facingDir.dot(tangentForward)
       )
-      setFacingAngle(yawRef.current)
+      if (Math.abs(yawRef.current - lastDispatchedYaw.current) > 0.05) {
+        lastDispatchedYaw.current = yawRef.current
+        setFacingAngle(yawRef.current)
+      }
     }
 
     // Align body "up" to surface normal
     _qAlign.setFromUnitVectors(_upRef, _normal)
     // Apply yaw on top of normal alignment
-    const qYaw = new Quaternion().setFromAxisAngle(_normal, yawRef.current)
+    const qYaw = _qYaw.setFromAxisAngle(_normal, yawRef.current)
     _qAlign.premultiply(qYaw)
 
     modelRef.current.quaternion.copy(_qAlign)
@@ -238,8 +268,11 @@ export default function VisitorController() {
       footstepDistanceRef.current = 0.4
     }
 
-    // ── SYNC STORE ───────────────────────────────────────
-    setPosition([pos.x, pos.y, pos.z])
+    // ── SYNC STORE (Throttled to avoid 60fps re-render storms across store subscribers) ──
+    if (_posVec.distanceToSquared(lastDispatchedPos.current) > 0.0004) {
+      lastDispatchedPos.current.copy(_posVec)
+      setPosition([pos.x, pos.y, pos.z])
+    }
   })
 
   return (

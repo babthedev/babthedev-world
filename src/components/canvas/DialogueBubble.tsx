@@ -47,7 +47,6 @@ export default function DialogueBubble() {
     <Html
       position={[0, 2.2, 0]}
       center
-      occlude
       distanceFactor={8}
       // Prevents bubble from blocking clicks on props behind it
       style={{ pointerEvents: 'none' }}

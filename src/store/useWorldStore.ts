@@ -187,3 +187,7 @@ export const useWorldStore = create<WorldStore>((set) => ({
   triggerCameraImpulse: () =>
     set((s) => ({ cameraImpulse: s.cameraImpulse + 1 })),
 }))
+
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  ;(window as any).__WORLD_STORE__ = useWorldStore
+}

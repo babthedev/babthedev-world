@@ -48,6 +48,9 @@ export default function CameraController() {
   useFrame((state, delta) => {
     if (freeFlyMode) return
 
+    // Bound delta to 0.05s to prevent explosive camera launches during frame hiccups
+    const dt = Math.min(delta, 0.05)
+
     const [vx, vy, vz] = visitorPos
     _posVec.set(vx, vy, vz)
 
@@ -59,24 +62,27 @@ export default function CameraController() {
     const { forward: tangentForward, right: tangentRight } = getTangentBasis(_normal)
 
     // Smooth the camera's angle toward visitor's facing angle
+    const angleAlpha = Math.min(1, 3.5 * dt)
     smoothedAngle.current = MathUtils.lerp(
       smoothedAngle.current,
       facingAngle,
-      3.5 * delta
+      angleAlpha
     )
 
     // Q143: Smoothly glide inward 1m and orbit 20° (0.35 rad) during dialogue
+    const dialogueAlpha = Math.min(1, 3.5 * dt)
     dialogueGlide.current = MathUtils.lerp(
       dialogueGlide.current,
       isDialogueActive ? 1 : 0,
-      3.5 * delta
+      dialogueAlpha
     )
 
     // Q118: Elevate camera +0.5m during district arrival fanfare
+    const arrivalAlpha = Math.min(1, 2.5 * dt)
     arrivalElevation.current = MathUtils.lerp(
       arrivalElevation.current,
       districtLabelVisible ? 0.5 : 0,
-      2.5 * delta
+      arrivalAlpha
     )
 
     const targetDist = CAMERA_BACK - dialogueGlide.current * 1.0
@@ -95,7 +101,8 @@ export default function CameraController() {
       lastImpulse.current = cameraImpulse
       impulseOffset.current = CAMERA_IMPULSE
     }
-    impulseOffset.current = MathUtils.lerp(impulseOffset.current, 0, 12 * delta)
+    const impulseAlpha = Math.min(1, 12 * dt)
+    impulseOffset.current = MathUtils.lerp(impulseOffset.current, 0, impulseAlpha)
 
     // "Behind" direction in tangent plane:
     _behindDir
@@ -148,13 +155,14 @@ export default function CameraController() {
       }
     }
 
-    // Smooth camera position
-    state.camera.position.lerp(_desired, CAMERA_LERP * delta)
-    state.camera.lookAt(_lookAt)
-
-    // Set camera "up" vector to surface normal so the horizon
-    // stays level relative to the planet surface
+    // Set camera "up" vector to surface normal BEFORE lookAt so the
+    // orientation matrix calculates with the correct up vector
     state.camera.up.copy(_normal)
+
+    // Smooth camera position with bounded lerp factor
+    const camLerpAlpha = Math.min(1, CAMERA_LERP * dt)
+    state.camera.position.lerp(_desired, camLerpAlpha)
+    state.camera.lookAt(_lookAt)
 
     // ── OBJECT FADE-THROUGH ─────────────────────────────
     // Raycast from camera to player, fade objects blocking view

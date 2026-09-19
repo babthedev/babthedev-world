@@ -39,6 +39,9 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test captures
+runtime-capture*.png
 /inspirations from messenger
 
 # development reference assets (not for production)
