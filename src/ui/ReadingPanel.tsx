@@ -21,6 +21,8 @@ interface ChapterHeading {
   text: string
 }
 
+const MODAL_PANELS = new Set(['contact', 'guestbook', 'colophon'])
+
 export default function ReadingPanel() {
   const activePanel = useWorldStore((s) => s.activePanel)
   const setActivePanel = useWorldStore((s) => s.setActivePanel)
@@ -33,11 +35,12 @@ export default function ReadingPanel() {
   const [zoomMedia, setZoomMedia] = useState<{ src: string; alt: string; caption?: string } | null>(null)
   const [headings, setHeadings] = useState<ChapterHeading[]>([])
 
-  const isOpen = activePanel !== null
+  const isContentSlug = activePanel !== null && !MODAL_PANELS.has(activePanel)
+  const isOpen = isContentSlug
 
   // ── Q76: TELEMETRY TRACKING ON CONTENT OPEN & 2-MIN ENGAGEMENT ─
   useEffect(() => {
-    if (!activePanel) return
+    if (!isContentSlug || !activePanel) return
 
     trackEvent('content_opened', { slug: activePanel })
 
@@ -46,11 +49,11 @@ export default function ReadingPanel() {
     }, 120_000)
 
     return () => clearTimeout(twoMinTimer)
-  }, [activePanel, trackEvent])
+  }, [isContentSlug, activePanel, trackEvent])
 
   // ── FETCH CONTENT WHEN PANEL OPENS ──────────────────────
   useEffect(() => {
-    if (!activePanel) {
+    if (!isContentSlug || !activePanel) {
       setContent(null)
       setHeadings([])
       setZoomMedia(null)
@@ -88,7 +91,7 @@ export default function ReadingPanel() {
 
     // Abdulrahman enters "Idle Waiting" — acknowledges reading state
     setCurrentDialogue(SPECIAL_DIALOGUES.reading_open.text)
-  }, [activePanel, setCurrentDialogue, playPageTurn])
+  }, [isContentSlug, activePanel, setCurrentDialogue, playPageTurn])
 
   // ── CLOSE HANDLERS: X button, Escape, or click outside ──
   const closePanel = useCallback(() => {

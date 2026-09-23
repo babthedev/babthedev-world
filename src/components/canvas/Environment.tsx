@@ -8,6 +8,9 @@ import {
   ROAD_TILES,
   BUILDINGS,
   PROP_LOCATIONS,
+  ADDITIONAL_PROPS,
+  DEAD_END_PROPS,
+  ORYZON_PROPS,
   NPC_LOCATIONS,
 } from '@/lib/worldCoordinates'
 import { mapToSphere, flatToSphere } from '@/lib/surfacePlacement'
@@ -40,7 +43,14 @@ const SPHERE_BUILDINGS = mapToSphere(BUILDINGS.map(b => ({
   rotation: b.rotation ?? [0, 0, 0] as [number, number, number],
 })))
 
-const SPHERE_PROPS = mapToSphere(PROP_LOCATIONS.map(p => ({
+const ALL_PROPS = [
+  ...PROP_LOCATIONS,
+  ...ADDITIONAL_PROPS,
+  ...DEAD_END_PROPS,
+  ...ORYZON_PROPS,
+]
+
+const SPHERE_PROPS = mapToSphere(ALL_PROPS.map(p => ({
   ...p,
   rotation: p.rotation ?? [0, 0, 0] as [number, number, number],
 })))

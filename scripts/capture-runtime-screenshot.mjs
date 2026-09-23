@@ -61,12 +61,12 @@ async function run() {
   // Extract Next.js dev overlay error if present
   const nextError = await page.evaluate(() => {
     const portal = document.querySelector('nextjs-portal')
-    if (portal) {
-      const root = portal.shadowRoot || portal
-      return root.textContent || root.innerHTML
+    if (portal && portal.shadowRoot) {
+      const dialog = portal.shadowRoot.querySelector('[data-nextjs-dialog]')
+      if (dialog) return dialog.textContent
     }
-    const dialog = document.querySelector('[data-nextjs-dialog]')
-    return dialog ? dialog.textContent : null
+    const fallbackDialog = document.querySelector('[data-nextjs-dialog]')
+    return fallbackDialog ? fallbackDialog.textContent : null
   })
   if (nextError) {
     console.error('--- NEXT.JS RUNTIME ERROR ---', nextError)

@@ -8,26 +8,34 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ slug: string }> }
 ) {
-  const { slug } = await params
+  try {
+    const { slug } = await params
 
-  // Search across all content folders for a matching slug
-  for (const folder of FOLDERS) {
-    const items = getMdxContent(folder)
-    const match = items.find((item) => item.slug === slug)
+    // Search across all content folders for a matching slug
+    for (const folder of FOLDERS) {
+      const items = getMdxContent(folder)
+      const match = items.find((item) => item.slug === slug)
 
-    if (match) {
-      const mdxSource = await serialize(match.content, {
-        parseFrontmatter: false,
-      })
+      if (match) {
+        const mdxSource = await serialize(match.content, {
+          parseFrontmatter: false,
+        })
 
-      return NextResponse.json({
-        found: true,
-        source: mdxSource,
-        frontmatter: match.frontmatter,
-        folder,
-      })
+        return NextResponse.json({
+          found: true,
+          source: mdxSource,
+          frontmatter: match.frontmatter,
+          folder,
+        })
+      }
     }
-  }
 
-  return NextResponse.json({ found: false }, { status: 404 })
+    return NextResponse.json({ found: false }, { status: 404 })
+  } catch (error) {
+    console.error('Error fetching/serializing content:', error)
+    return NextResponse.json(
+      { found: false, error: 'Failed to process content request' },
+      { status: 500 }
+    )
+  }
 }
