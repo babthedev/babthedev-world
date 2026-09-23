@@ -37,7 +37,11 @@ export default function Scene() {
     <Canvas
       shadows
       frameloop={isTabHidden ? 'never' : 'always'}
-      onCreated={({ gl }) => {
+      onCreated={({ gl, scene, camera }) => {
+        if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+          ;(window as any).__THREE_SCENE__ = scene
+          ;(window as any).__THREE_CAMERA__ = camera
+        }
         const dom = gl.domElement
         // Q90: Automated webglcontextlost recovery
         dom.addEventListener('webglcontextlost', (e) => {

@@ -39,14 +39,14 @@ async function run() {
   console.log('Navigating to http://localhost:3004...')
   await page.goto('http://localhost:3004', { waitUntil: 'domcontentloaded', timeout: 30000 })
 
-  console.log('Waiting for 3D world to load and mount (> 50 meshes)...')
+  console.log('Waiting for 3D world to load and mount (> 20 meshes)...')
   await page.waitForFunction(() => {
     const scene = window.__THREE_SCENE__
     if (!scene) return false
     let count = 0
     scene.traverse((o) => { if (o.isMesh) count++ })
-    return count > 50
-  }, { timeout: 45000 })
+    return count > 20
+  }, { timeout: 60000 })
 
   console.log('World loaded! Dismissing intro dialogue...')
   await page.evaluate(() => {
