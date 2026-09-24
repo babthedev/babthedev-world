@@ -99,6 +99,19 @@ export function runSphereMathTests() {
     assertApprox(forward.dot(right), 0, 1e-5, 'Forward orthogonal to right')
   }
 
+  // 5b. getTangentBasis is continuous across the Hub (north pole)
+  {
+    // Walk a 20m line straight through the pole in 5cm steps
+    let prev = getTangentBasis(new Vector3(Math.sin(-0.4), Math.cos(-0.4), 0)).forward
+    let worst = 1
+    for (let a = -0.4; a <= 0.4; a += 0.002) {
+      const f = getTangentBasis(new Vector3(Math.sin(a), Math.cos(a), 0)).forward
+      worst = Math.min(worst, f.dot(prev))
+      prev = f
+    }
+    assert(worst > 0.99, `Tangent frame does not jump when crossing the Hub (worst step dot ${worst.toFixed(3)})`)
+  }
+
   // 6. alignToNormalQuaternion
   {
     const pos = new Vector3(0, PLANET_RADIUS, 0) // North pole

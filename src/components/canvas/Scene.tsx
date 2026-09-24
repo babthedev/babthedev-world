@@ -6,28 +6,25 @@ import { EffectComposer, SMAA } from '@react-three/postprocessing'
 import World from './World'
 import CameraController from './CameraController'
 import SobelOutline from './SobelOutline'
-import Squigglevision from './Squigglevision'
+import Monochrome from './Monochrome'
 import PaperGrain from './PaperGrain'
 import PaperCranes from './PaperCranes'
 import PaperFlecks from './PaperFlecks'
 import FootstepPuffs from './FootstepPuffs'
-import GradientSkyDome from './GradientSkyDome'
+import PaintedSky from './PaintedSky'
+import SunRig from './SunRig'
 import { useWorldStore } from '@/store/useWorldStore'
+import { FEATURE_FLAGS } from '@/lib/featureFlags'
 import {
   CAMERA_FOV,
   CAMERA_NEAR,
   CAMERA_FAR,
   MAX_PIXEL_RATIO,
-  SHADOW_MAP_SIZE,
   FOG_NEAR,
   FOG_FAR,
   AMBIENT_INTENSITY,
-  DIRECTIONAL_INTENSITY,
-  PAPER_BACKGROUND,
+  SKY_HORIZON_COLOR,
 } from '@/lib/constants'
-
-const isLowPower =
-  typeof window !== 'undefined' && navigator.hardwareConcurrency <= 4
 
 export default function Scene() {
   const isTabHidden = useWorldStore((s) => s.isTabHidden)
@@ -35,12 +32,14 @@ export default function Scene() {
 
   return (
     <Canvas
-      shadows
+      // Hard-edged PCF (no soft blur) — PCFSoftShadowMap is deprecated in r184
+      shadows="percentage"
       frameloop={isTabHidden ? 'never' : 'always'}
       onCreated={({ gl, scene, camera }) => {
         if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
           ;(window as any).__THREE_SCENE__ = scene
           ;(window as any).__THREE_CAMERA__ = camera
+          ;(window as any).__THREE_RENDERER__ = gl
         }
         const dom = gl.domElement
         // Q90: Automated webglcontextlost recovery
@@ -74,33 +73,17 @@ export default function Scene() {
           : 1
       }
     >
-      {/* ── PAPER BACKGROUND ─────────────────────────── */}
-      <color attach="background" args={[PAPER_BACKGROUND]} />
-      {/* fog args map directly to THREE.Fog(color, near, far) constructor */}
-      <fog attach="fog" args={[PAPER_BACKGROUND, FOG_NEAR, FOG_FAR]} />
+      {/* ── SKY & ATMOSPHERE ─────────────────────────── */}
+      <color attach="background" args={[SKY_HORIZON_COLOR]} />
+      {/* Fog matches the horizon tone so distant rooftops dissolve into sky */}
+      <fog attach="fog" args={[SKY_HORIZON_COLOR, FOG_NEAR, FOG_FAR]} />
 
       {/* ── LIGHTING ─────────────────────────────────────
-          Slightly reduced directional intensity vs the dark-bg version —
-          bright light on a light background washes out the toon steps otherwise.
+          Ambient sets the shadow tone; the sun rig adds the lit tone and
+          follows the visitor so every district gets the same light.
       ──────────────────────────────────────────────────── */}
       <ambientLight intensity={AMBIENT_INTENSITY} color="#FFFFFF" />
-      <directionalLight
-        position={[25, 60, -20]}
-        intensity={DIRECTIONAL_INTENSITY}
-        color="#FFFFFF"
-        castShadow
-        shadow-mapSize-width={SHADOW_MAP_SIZE}
-        shadow-mapSize-height={SHADOW_MAP_SIZE}
-        shadow-camera-left={-80}
-        shadow-camera-right={80}
-        shadow-camera-top={80}
-        shadow-camera-bottom={-80}
-        shadow-camera-near={0.5}
-        shadow-camera-far={200}
-        shadow-bias={-0.0001}
-      />
-      {/* Weak fill from opposite side — prevents pure-black shadows */}
-      <directionalLight position={[-10, 10, 10]} intensity={0.1} color="#C8C8C8" />
+      <SunRig />
 
       {/* ── CAMERA ───────────────────────────────────── */}
       <CameraController />
@@ -108,18 +91,26 @@ export default function Scene() {
       {/* ── WORLD ────────────────────────────────────── */}
       <Suspense fallback={null}>
         <World />
-        <GradientSkyDome />
-        <PaperCranes />
-        <PaperFlecks />
+        <PaintedSky />
+        {FEATURE_FLAGS.AMBIENT_PAPER && (
+          <>
+            <PaperCranes />
+            <PaperFlecks />
+          </>
+        )}
         <FootstepPuffs />
       </Suspense>
 
-      {/* ── POST-PROCESSING ────────────────────────────── */}
+      {/* ── POST-PROCESSING ──────────────────────────────
+          Grade to monochrome first so ink is always the darkest value,
+          then ink lines (with 12fps boil), grain, and SMAA last so the
+          lines themselves are anti-aliased.
+      ──────────────────────────────────────────────────── */}
       <EffectComposer multisampling={0} enableNormalPass>
-        <SMAA />
+        <Monochrome />
         <SobelOutline />
         <PaperGrain />
-        {!isLowPower ? <Squigglevision /> : <></>}
+        <SMAA />
       </EffectComposer>
     </Canvas>
   )

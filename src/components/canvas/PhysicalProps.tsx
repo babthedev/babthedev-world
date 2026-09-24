@@ -135,7 +135,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
       {/* Essay 1: Brutalist Web */}
       <group ref={book1Ref} position={book1.position} quaternion={book1.quaternion}>
         {/* Book cover */}
-        <mesh position={[0, 0.45, 0]} material={bookMaterial} castShadow>
+        <mesh position={[0, 0.45, 0]} material={bookMaterial}>
           <boxGeometry args={[0.5, 0.7, 0.12]} />
         </mesh>
         {/* Paper page edges */}
@@ -158,7 +158,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
 
       {/* Essay 2: Digital Public Spaces */}
       <group ref={book2Ref} position={book2.position} quaternion={book2.quaternion}>
-        <mesh position={[0, 0.45, 0]} material={bookMaterial} castShadow>
+        <mesh position={[0, 0.45, 0]} material={bookMaterial}>
           <boxGeometry args={[0.5, 0.7, 0.12]} />
         </mesh>
         <mesh position={[0.02, 0.45, 0]} material={pagesMaterial}>
@@ -181,11 +181,11 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
       {/* Pedestal 1: Oryzon */}
       <group ref={plinth1Ref} position={plinth1.position} quaternion={plinth1.quaternion}>
         {/* Chamfered concrete plinth */}
-        <mesh position={[0, 0.5, 0]} material={plinthMaterial} castShadow receiveShadow>
+        <mesh position={[0, 0.5, 0]} material={plinthMaterial} receiveShadow>
           <cylinderGeometry args={[0.6, 0.75, 1.0, 8]} />
         </mesh>
         {/* Hovering stylized miniature */}
-        <mesh ref={gemRef1} position={[0, 1.35, 0]} material={gemMaterial} castShadow>
+        <mesh ref={gemRef1} position={[0, 1.35, 0]} material={gemMaterial}>
           <octahedronGeometry args={[0.26, 0]} />
         </mesh>
         <Text
@@ -202,10 +202,10 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
 
       {/* Pedestal 2: Roadwarden */}
       <group ref={plinth2Ref} position={plinth2.position} quaternion={plinth2.quaternion}>
-        <mesh position={[0, 0.5, 0]} material={plinthMaterial} castShadow receiveShadow>
+        <mesh position={[0, 0.5, 0]} material={plinthMaterial} receiveShadow>
           <cylinderGeometry args={[0.6, 0.75, 1.0, 8]} />
         </mesh>
-        <mesh ref={gemRef2} position={[0, 1.35, 0]} material={gemMaterial} castShadow>
+        <mesh ref={gemRef2} position={[0, 1.35, 0]} material={gemMaterial}>
           <icosahedronGeometry args={[0.24, 0]} />
         </mesh>
         <Text
@@ -223,11 +223,11 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
       {/* ── Q115: RETRO CRT ARCHIVE TERMINAL ───────────────── */}
       <group ref={terminalRef} position={terminal.position} quaternion={terminal.quaternion}>
         {/* Desk body */}
-        <mesh position={[0, 0.4, 0]} material={plinthMaterial} castShadow>
+        <mesh position={[0, 0.4, 0]} material={plinthMaterial}>
           <boxGeometry args={[1.4, 0.8, 0.9]} />
         </mesh>
         {/* CRT Monitor casing */}
-        <mesh position={[0, 1.05, 0]} material={bookMaterial} castShadow>
+        <mesh position={[0, 1.05, 0]} material={bookMaterial}>
           <boxGeometry args={[0.7, 0.55, 0.5]} />
         </mesh>
         {/* Screen */}
@@ -260,11 +260,11 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
       {/* ── Q77: WELCOME TERRACE MAILBOX ─────────────────────── */}
       <group ref={mailboxRef} position={mailbox.position} quaternion={mailbox.quaternion}>
         {/* Wooden post */}
-        <mesh position={[0, 0.45, 0]} material={plinthMaterial} castShadow>
+        <mesh position={[0, 0.45, 0]} material={plinthMaterial}>
           <cylinderGeometry args={[0.06, 0.06, 0.9, 8]} />
         </mesh>
         {/* Mailbox casing */}
-        <mesh position={[0, 1.05, 0]} material={bookMaterial} castShadow>
+        <mesh position={[0, 1.05, 0]} material={bookMaterial}>
           <boxGeometry args={[0.36, 0.38, 0.58]} />
         </mesh>
         {/* Mail Slot */}
@@ -309,7 +309,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           <boxGeometry args={[0.05, 1.0, 0.06]} />
         </mesh>
         {/* Slate blackboard */}
-        <mesh position={[0, 0.72, 0.02]} material={bookMaterial} castShadow>
+        <mesh position={[0, 0.72, 0.02]} material={bookMaterial}>
           <boxGeometry args={[0.78, 0.92, 0.04]} />
         </mesh>
         {/* SDF Chalk lettering */}
@@ -362,7 +362,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           <cylinderGeometry args={[0.05, 0.05, 0.9, 8]} />
         </mesh>
         {/* Frame */}
-        <mesh position={[0, 1.05, 0]} material={plinthMaterial} castShadow>
+        <mesh position={[0, 1.05, 0]} material={plinthMaterial}>
           <boxGeometry args={[1.22, 0.82, 0.06]} />
         </mesh>
         {/* Corkboard back */}

@@ -18,9 +18,23 @@ export const PLANET_RADIUS = 25                // 50m diameter sphere
 export const SPHERE_SEGMENTS = 128             // Smooth sphere mesh resolution
 
 // --- CAMERA ---
-export const CAMERA_HEIGHT = 3
-export const CAMERA_BACK = 6
-export const CAMERA_FOV = 60
+// Messenger framing: low and close, a wide lens aimed past the character
+// so the curved horizon drops and buildings lean in overhead.
+export const CAMERA_HEIGHT = 1.75               // above the visitor's capsule origin, along the normal
+export const CAMERA_BACK = 3.9
+export const CAMERA_FOV = 68
+export const CAMERA_LOOK_HEIGHT = 1.35
+export const CAMERA_LOOK_AHEAD = 2.2
+// Q143/Q144, re-tuned for the closer/wider framing (was 6m @ 60° FOV,
+// now 3.9m @ 68°) so both effects read on screen the same as before.
+// Dialogue pull is a % of the shot distance, so it scales with CAMERA_BACK
+// directly: 1m / 6m ≈ 16.7% of the old distance.
+export const CAMERA_DIALOGUE_PULL = CAMERA_BACK * 0.167   // ~0.65m
+// Reading-panel pan is a lateral offset judged by the screen-space angle
+// it subtends, so it scales by both distance and FOV:
+// old angle = atan(1.5/6) ≈ 14.0°, as a fraction of the old half-FOV (30°) ≈ 46.8%
+// new pan = tan(46.8% × new half-FOV 34°) × 3.9m ≈ 1.1m
+export const CAMERA_READING_PAN = 1.1
 export const CAMERA_LERP = 5
 export const CAMERA_NEAR = 0.1
 export const CAMERA_FAR = 200
@@ -29,10 +43,20 @@ export const CAMERA_PITCH_MAX = 60 * (Math.PI / 180)    // Q142: +60° up
 export const CAMERA_IMPULSE = 0.03                       // Q145: micro-impulse distance (m)
 
 // --- TOON SHADER ---
-export const TOON_GRADIENT_STEPS = new Uint8Array([80, 150, 210, 255])
+// Two tones: surfaces facing away from the sun get ambient only, which
+// matches cast shadows exactly — Messenger's flat lit/shadow split.
+export const TOON_GRADIENT_STEPS = new Uint8Array([0, 255])
 export const OUTLINE_COLOR = '#0B0B0B'
-export const OUTLINE_THICKNESS = 1.4          // pixels, used by Sobel effect
-export const OUTLINE_DEPTH_THRESHOLD = 0.0008 // edge sensitivity
+export const OUTLINE_THICKNESS = 2.4          // drawing-buffer pixels at close range
+export const OUTLINE_DEPTH_THRESHOLD = 0.06   // relative linear-depth Laplacian
+export const OUTLINE_NORMAL_THRESHOLD = 0.3   // 1 - cos(angle) between neighbour normals
+export const OUTLINE_BOIL_PX = 1.1            // max line wobble, pixels
+
+// --- MONOCHROME GRADE (perceptual 0..1) ---
+export const MONO_BLACK = 0.04
+export const MONO_WHITE = 0.97
+export const MONO_STEPS = 7                   // value bands
+export const MONO_POSTERIZE = 0.55            // 0 = smooth, 1 = hard bands
 
 // --- WORLD / PAPER PALETTE ---
 export const PAPER_BACKGROUND = '#F2F1EC'     // slightly warm off-white, not pure white
@@ -58,13 +82,24 @@ export const DISTRICT_SENSOR_HALF_EXTENT = 5
 
 // --- RENDERING ---
 export const MAX_PIXEL_RATIO = 1.5
-export const SHADOW_MAP_SIZE = 1024
-export const FOG_NEAR = 35
-export const FOG_FAR = 90
+export const SHADOW_MAP_SIZE = 2048
+export const FOG_NEAR = 45
+export const FOG_FAR = 120
 
-// --- AMBIENT LIGHT ---
-export const AMBIENT_INTENSITY = 0.5
-export const DIRECTIONAL_INTENSITY = 1.1
+// --- LIGHTING ---
+// Three's lights carry a 1/π Lambert factor, so ambient + sun ≈ π keeps a
+// lit albedo at its authored value; ambient alone lands shadows at ~60%
+// of the lit tone in display (sRGB) terms.
+export const AMBIENT_INTENSITY = 1.05
+export const DIRECTIONAL_INTENSITY = 2.1
+export const SUN_TILT = 1.25                  // tangent lean; min sun elevation = atan(1/tilt) ≈ 39°
+export const SUN_DISTANCE = 40
+export const SHADOW_EXTENT = 18               // half-size of the shadow frustum around the visitor
+
+// --- SKY ---
+export const SKY_COLOR = '#BBBBB4'            // flat mid-light sky, darker than lit walls
+export const SKY_HORIZON_COLOR = '#CECDC7'
+export const CLOUD_COLOR = '#F7F6F2'
 
 // --- UI ---
 export const PANEL_SLIDE_MS = 300

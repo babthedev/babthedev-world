@@ -3,9 +3,20 @@
 import { useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { Vector3, MathUtils, Raycaster, Mesh, MeshToonMaterial } from 'three'
+import { Vector3, MathUtils, Raycaster, Mesh } from 'three'
 import { useWorldStore } from '@/store/useWorldStore'
-import { CAMERA_HEIGHT, CAMERA_BACK, CAMERA_LERP, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX, CAMERA_IMPULSE } from '@/lib/constants'
+import {
+  CAMERA_HEIGHT,
+  CAMERA_BACK,
+  CAMERA_LERP,
+  CAMERA_PITCH_MIN,
+  CAMERA_PITCH_MAX,
+  CAMERA_IMPULSE,
+  CAMERA_LOOK_HEIGHT,
+  CAMERA_LOOK_AHEAD,
+  CAMERA_DIALOGUE_PULL,
+  CAMERA_READING_PAN,
+} from '@/lib/constants'
 import { getSurfaceNormal, getTangentBasis } from '@/lib/sphereMath'
 
 // Pre-allocated vectors — avoids GC pressure inside useFrame
@@ -14,6 +25,9 @@ const _lookAt = new Vector3()
 const _posVec = new Vector3()
 const _normal = new Vector3()
 const _behindDir = new Vector3()
+const _rightScaled = new Vector3()
+const _panShift = new Vector3()
+const _camRayDir = new Vector3()
 
 export default function CameraController() {
   const visitorPos = useWorldStore((state) => state.position)
@@ -42,7 +56,6 @@ export default function CameraController() {
   const impulseOffset = useRef(0)
 
   const raycaster = useRef(new Raycaster())
-  const fadedMeshes = useRef<Set<Mesh>>(new Set())
   const { scene } = useThree()
 
   useFrame((state, delta) => {
@@ -63,11 +76,9 @@ export default function CameraController() {
 
     // Smooth the camera's angle toward visitor's facing angle
     const angleAlpha = Math.min(1, 3.5 * dt)
-    smoothedAngle.current = MathUtils.lerp(
-      smoothedAngle.current,
-      facingAngle,
-      angleAlpha
-    )
+    // Lerp along the shortest arc so crossing ±π doesn't spin the camera 360°
+    const angleDelta = MathUtils.euclideanModulo(facingAngle - smoothedAngle.current + Math.PI, Math.PI * 2) - Math.PI
+    smoothedAngle.current += angleDelta * angleAlpha
 
     // Q143: Smoothly glide inward 1m and orbit 20° (0.35 rad) during dialogue
     const dialogueAlpha = Math.min(1, 3.5 * dt)
@@ -85,7 +96,7 @@ export default function CameraController() {
       arrivalAlpha
     )
 
-    const targetDist = CAMERA_BACK - dialogueGlide.current * 1.0
+    const targetDist = CAMERA_BACK - dialogueGlide.current * CAMERA_DIALOGUE_PULL
     const dialogueAngleOffset = dialogueGlide.current * 0.35
     const a = smoothedAngle.current + dialogueAngleOffset
 
@@ -105,31 +116,32 @@ export default function CameraController() {
     impulseOffset.current = MathUtils.lerp(impulseOffset.current, 0, impulseAlpha)
 
     // "Behind" direction in tangent plane:
-    _behindDir
-      .copy(tangentForward).multiplyScalar(-Math.cos(a))
-      .add(tangentRight.clone().multiplyScalar(-Math.sin(a)))
+    _rightScaled.copy(tangentRight).multiplyScalar(-Math.sin(a))
+    _behindDir.copy(tangentForward).multiplyScalar(-Math.cos(a)).add(_rightScaled)
 
     // Q144: When reading panel is open: shift camera 1.5m left
     // so both characters remain visible in the 60% uncovered screen
-    const panShift = isReading
-      ? tangentRight.clone().multiplyScalar(-1.5)
-      : new Vector3(0, 0, 0)
+    _panShift.set(0, 0, 0)
+    if (isReading) _panShift.copy(tangentRight).multiplyScalar(-CAMERA_READING_PAN)
 
-    // Camera position: behind + height + pitch + impulse
+    // Camera position: behind + height + pitch + impulse, aimed low and
+    // close (Messenger framing) rather than the old high, distant chase cam
     _desired.set(vx, vy, vz)
-      .add(_behindDir.clone().multiplyScalar(targetDist * pitchFlatten))
-      .add(_normal.clone().multiplyScalar(CAMERA_HEIGHT + arrivalElevation.current + pitchElevation + impulseOffset.current))
-      .add(panShift)
+      .addScaledVector(_behindDir, targetDist * pitchFlatten)
+      .addScaledVector(_normal, CAMERA_HEIGHT + arrivalElevation.current + pitchElevation + impulseOffset.current)
+      .add(_panShift)
 
-    // Look at visitor's mid-body (1 unit above position along normal)
+    // Look past the visitor — ahead along their facing direction and at
+    // roughly chest height — so the horizon drops and buildings loom
     _lookAt.set(vx, vy, vz)
-      .add(_normal.clone().multiplyScalar(1.0))
+      .addScaledVector(_normal, CAMERA_LOOK_HEIGHT)
+      .addScaledVector(tangentForward, Math.cos(dialogueAngleOffset) * CAMERA_LOOK_AHEAD * (1 - dialogueGlide.current * 0.6))
 
     // ── Q141: SPRING-ARM OCCLUSION RAYCAST ──────────────
     // Pulls camera forward 0.3m off blocking walls to avoid clipping
-    const camRayDir = _desired.clone().sub(_lookAt).normalize()
+    _camRayDir.copy(_desired).sub(_lookAt).normalize()
     const maxCamDist = _desired.distanceTo(_lookAt)
-    raycaster.current.set(_lookAt, camRayDir)
+    raycaster.current.set(_lookAt, _camRayDir)
     raycaster.current.far = maxCamDist
 
     const buildingsGroup = scene.getObjectByName('buildings')
@@ -151,7 +163,7 @@ export default function CameraController() {
       }
 
       if (closestBlockingDist < maxCamDist) {
-        _desired.copy(_lookAt).add(camRayDir.clone().multiplyScalar(closestBlockingDist))
+        _desired.copy(_lookAt).addScaledVector(_camRayDir, closestBlockingDist)
       }
     }
 
@@ -163,44 +175,6 @@ export default function CameraController() {
     const camLerpAlpha = Math.min(1, CAMERA_LERP * dt)
     state.camera.position.lerp(_desired, camLerpAlpha)
     state.camera.lookAt(_lookAt)
-
-    // ── OBJECT FADE-THROUGH ─────────────────────────────
-    // Raycast from camera to player, fade objects blocking view
-    if (occluders.length > 0) {
-      raycaster.current.set(
-        _lookAt,
-        _desired.clone().sub(_lookAt).normalize()
-      )
-      raycaster.current.far = _desired.distanceTo(_lookAt)
-
-      const fadeHits = raycaster.current.intersectObjects(occluders, true)
-      const currentlyBlocking = new Set<Mesh>()
-
-      for (const hit of fadeHits) {
-        if (hit.object instanceof Mesh && hit.object.name !== 'ground') {
-          currentlyBlocking.add(hit.object)
-          const mat = hit.object.material as MeshToonMaterial
-          if (mat && mat.opacity !== 0.25) {
-            mat.transparent = true
-            mat.opacity = 0.25
-            mat.needsUpdate = true
-          }
-        }
-      }
-
-      // Restore opacity on meshes no longer blocking
-      for (const mesh of fadedMeshes.current) {
-        if (!currentlyBlocking.has(mesh)) {
-          const mat = mesh.material as MeshToonMaterial
-          if (mat) {
-            mat.opacity = 1
-            mat.transparent = false
-            mat.needsUpdate = true
-          }
-        }
-      }
-      fadedMeshes.current = currentlyBlocking
-    }
   })
 
   if (freeFlyMode) {

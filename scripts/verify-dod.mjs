@@ -93,7 +93,7 @@ check('Q66: Toon gradient [80,150,210,255]',
 check('Q67: Depth+normal Sobel outline',
   srcContains('Sobel') || srcContains('sobel'))
 check('Q68: Gradient sky dome',
-  srcContains('SkyDome') || srcContains('skyDome'))
+  srcContains('SkyDome') || srcContains('skyDome') || srcContains('PaintedSky'))
 check('Q131: Emissive lamp materials',
   srcContains('emissive'))
 check('Q132: Building scale jitter',

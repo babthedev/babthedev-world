@@ -103,6 +103,30 @@ export default function VisitorController() {
     }
   }, [setPosition])
 
+  // ── DEV: TELEPORT HOOK (used by scripts/capture-poses.mjs) ──
+  // __TELEPORT__(flatX, flatZ, lookFlatX, lookFlatZ) places the visitor at a
+  // flat-world coordinate facing toward another flat-world coordinate.
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return
+    ;(window as any).__TELEPORT__ = (x: number, z: number, lx: number, lz: number) => {
+      if (!bodyRef.current) return
+      const spawn = mapSpawnToSphere([x, 0, z], CHARACTER_CAPSULE_HEIGHT)
+      bodyRef.current.setTranslation({ x: spawn[0], y: spawn[1], z: spawn[2] }, true)
+      bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true)
+      const here = new Vector3(...spawn)
+      const n = getSurfaceNormal(here)
+      const look = projectOntoTangentPlane(new Vector3(...mapSpawnToSphere([lx, 0, lz], 0)).sub(here), n).normalize()
+      const { forward: f, right: r } = getTangentBasis(n)
+      yawRef.current = Math.atan2(look.dot(r), look.dot(f))
+      setFacingAngle(yawRef.current)
+      setTourActive(false)
+      setPosition(spawn)
+    }
+    return () => {
+      delete (window as any).__TELEPORT__
+    }
+  }, [setPosition, setFacingAngle, setTourActive])
+
   useFrame((state, delta) => {
     if (!bodyRef.current || !modelRef.current) return
 

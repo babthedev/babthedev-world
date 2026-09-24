@@ -7,6 +7,7 @@ import VisitorController from './VisitorController'
 import AbdulrahmanController from './AbdulrahmanController'
 import TriggerZones from './TriggerZones'
 import Environment from './Environment'
+import StreetKit from './StreetKit'
 import OryzonGate from './OryzonGate'
 import RadialGravityField from './RadialGravityField'
 import {
@@ -80,6 +81,7 @@ export default function World() {
           toon shading step texture.
       ──────────────────────────────────────────────── */}
       <Environment gradientMap={gradientMap} />
+      <StreetKit gradientMap={gradientMap} />
       <InteractiveProps />
     </Physics>
   )

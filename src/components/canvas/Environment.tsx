@@ -2,15 +2,9 @@
 
 import { useEffect, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
-import { Mesh, MeshToonMaterial, Texture, Quaternion, Euler } from 'three'
-import { RigidBody } from '@react-three/rapier'
+import { Mesh, MeshToonMaterial, Texture } from 'three'
 import {
-  ROAD_TILES,
-  BUILDINGS,
   PROP_LOCATIONS,
-  ADDITIONAL_PROPS,
-  DEAD_END_PROPS,
-  ORYZON_PROPS,
   NPC_LOCATIONS,
 } from '@/lib/worldCoordinates'
 import { mapToSphere, flatToSphere } from '@/lib/surfacePlacement'
@@ -18,7 +12,6 @@ import NPCCharacter from './NPCCharacter'
 import FlickerLight from './FlickerLight'
 import DistrictGateways from './DistrictGateways'
 import InWorldSignage from './InWorldSignage'
-import RoadMarkings from './RoadMarkings'
 import PhysicalProps from './PhysicalProps'
 import WindStreaks from './WindStreaks'
 import EasterEggs from './EasterEggs'
@@ -34,24 +27,8 @@ const SPHERE_CAFE_LANTERN_POS = flatToSphere(-42, 3, 2.5).position
 
 // ── Pre-compute sphere-projected positions at module level ──
 // This avoids recalculating every render.
-const SPHERE_ROADS = mapToSphere(ROAD_TILES.map(t => ({
-  ...t,
-  rotation: t.rotation ?? [0, 0, 0] as [number, number, number],
-})))
 
-const SPHERE_BUILDINGS = mapToSphere(BUILDINGS.map(b => ({
-  ...b,
-  rotation: b.rotation ?? [0, 0, 0] as [number, number, number],
-})))
-
-const ALL_PROPS = [
-  ...PROP_LOCATIONS,
-  ...ADDITIONAL_PROPS,
-  ...DEAD_END_PROPS,
-  ...ORYZON_PROPS,
-]
-
-const SPHERE_PROPS = mapToSphere(ALL_PROPS.map(p => ({
+const SPHERE_PROPS = mapToSphere(PROP_LOCATIONS.map(p => ({
   ...p,
   rotation: p.rotation ?? [0, 0, 0] as [number, number, number],
 })))
@@ -141,51 +118,6 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
         decay={2}
       />
 
-      {/* ── ROADS ────────────────────────────────────
-          Non-colliding — visitor walks over these freely,
-          they're just visual ground dressing.
-          Now projected onto the sphere surface.
-      ──────────────────────────────────────────────── */}
-      {SPHERE_ROADS.map((tile, i) => (
-        <KenneyAsset
-          key={`road-${i}`}
-          model={tile.model}
-          position={tile.position}
-          rotation={tile.rotation}
-          gradientMap={gradientMap}
-          color="#1A1A1A"
-          receiveShadow
-        />
-      ))}
-
-      {/* ── BUILDINGS ────────────────────────────────
-          Fixed RigidBody wrapper with a simple box collider
-          approximation so characters can't walk through walls.
-          Q132: Scale jitter (0.9-1.2x) for varied architectural silhouettes.
-      ──────────────────────────────────────────────── */}
-      <group name="buildings">
-        {SPHERE_BUILDINGS.map((building, i) => {
-          const buildingScale = building.scale ?? (0.9 + ((i * 13) % 7) * 0.05)
-          return (
-            <RigidBody
-              key={`building-${i}`}
-              type="fixed"
-              colliders="cuboid"
-              position={building.position}
-              rotation={building.rotation}
-            >
-              <KenneyAsset
-                model={building.model}
-                position={[0, 0, 0]}
-                scale={buildingScale}
-                gradientMap={gradientMap}
-                color="#141414"
-              />
-            </RigidBody>
-          )
-        })}
-      </group>
-
       {/* ── PROPS ────────────────────────────────────
           Small/medium props: no collider (per spec — papers,
           cups, small items pass through). Interactive props
@@ -214,9 +146,6 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
         <NPCCharacter key={npc.id} npc={npc} gradientMap={gradientMap} />
       ))}
 
-      {/* ── Q133: CONFORMAL ROAD MARKINGS ────────────── */}
-      <RoadMarkings />
-
       {/* ── Q87: IN-WORLD SDF SIGNAGE ─────────────────── */}
       <InWorldSignage />
 
@@ -235,8 +164,5 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
   )
 }
 
-// Preload core road/building assets so first paint isn't blank
-useGLTF.preload('/kenney/road-crossing.glb')
-useGLTF.preload('/kenney/road-straight.glb')
-useGLTF.preload('/kenney/road-end.glb')
+// Preload Joe VRM asset
 useGLTF.preload('/joe.vrm')

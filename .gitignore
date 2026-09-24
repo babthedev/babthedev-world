@@ -50,3 +50,5 @@ runtime-capture*.png
 # playwright
 /test-results/
 /playwright-report/
+# visual capture harness output
+captures/

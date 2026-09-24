@@ -38,7 +38,10 @@ export function useRadialGravity(strength: number = RADIAL_GRAVITY) {
       const mass = body.mass()
       dir.multiplyScalar(strength * mass)
 
-      // Apply as a central force (not an impulse — continuous each step)
+      // Rapier user forces persist across steps until reset, so clear last
+      // step's pull first — otherwise the force accumulates without bound
+      // and keeps pointing wherever gravity pointed when the body spawned.
+      body.resetForces(false)
       body.addForce({ x: dir.x, y: dir.y, z: dir.z }, true)
     })
   })

@@ -7,6 +7,14 @@ import { Vector3, Quaternion } from 'three'
 export const PLANET_RADIUS = 25
 
 /**
+ * Reference axis for the global tangent frame (see getTangentBasis).
+ * Polar 0.8 rad, azimuth 45°: ~20m from the Hub, mid-block between the
+ * east and Oryzon streets. Its antipode lies in the southern backfill.
+ */
+const FRAME_POLE = new Vector3(Math.sin(0.8) * Math.SQRT1_2, Math.cos(0.8), Math.sin(0.8) * Math.SQRT1_2)
+const FRAME_POLE_FALLBACK = new Vector3(0, 1, 0)
+
+/**
  * Converts polar/spherical angles into Cartesian coordinates on the planet surface.
  * @param theta Azimuth angle in radians [0, 2*PI) around the Y axis.
  * @param phi Polar inclination in radians [0, PI] from +Y (North pole = 0, Equator = PI/2, South pole = PI).
@@ -71,7 +79,12 @@ export function getTangentBasis(normal: Vector3): {
   forward: Vector3
   right: Vector3
 } {
-  const upRef = Math.abs(normal.y) > 0.99 ? new Vector3(0, 0, 1) : new Vector3(0, 1, 0)
+  // Every tangent frame on a sphere has a singular point (hairy-ball
+  // theorem). The old frame used world +Y, whose singularity sat exactly
+  // on the Hub at the north pole, so camera and controls snapped there.
+  // FRAME_POLE parks both singular points inside unwalkable building
+  // blocks (between the east and Oryzon streets, and its antipode).
+  const upRef = Math.abs(normal.dot(FRAME_POLE)) > 0.999 ? FRAME_POLE_FALLBACK : FRAME_POLE
   const right = new Vector3().crossVectors(upRef, normal).normalize()
   const forward = new Vector3().crossVectors(normal, right).normalize()
   return { forward, right }

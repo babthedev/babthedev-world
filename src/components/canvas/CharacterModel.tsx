@@ -91,38 +91,54 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
       }
     }, [gltf, isVRM])
 
-    // ── MATERIAL OVERRIDE & VRAM PURGE ─────────────────
-    const toonMaterial = useMemo(
-      () =>
-        new MeshToonMaterial({
-          color,
-          gradientMap,
-        }),
-      [color, gradientMap]
-    )
-
+    // ── MATERIAL CONVERSION ────────────────────────────
+    // Each VRoid material (skin, eyes, hair, clothing…) becomes a toon
+    // material that keeps its own base texture, tint and transparency, so
+    // the parts stay distinct once the Monochrome pass greys them. MToon's
+    // inverted-hull outline materials are kept and inked instead.
     useEffect(() => {
       const targetScene = vrm ? vrm.scene : scene
       if (!targetScene) return
 
+      const converted = new Map<any, any>()
+      const convert = (m: any) => {
+        if (converted.has(m)) return converted.get(m)
+        let next = m
+        if (m.isOutline) {
+          m.outlineColorFactor?.set?.('#0B0B0B')
+        } else if (!(m instanceof MeshToonMaterial)) {
+          next = new MeshToonMaterial({
+            map: m.map ?? null,
+            color: m.map ? (m.color ?? '#FFFFFF') : (m.color ?? color),
+            gradientMap,
+            transparent: m.transparent,
+            alphaTest: m.alphaTest,
+            side: m.side,
+            depthWrite: m.depthWrite,
+          })
+          // Free every texture the new material doesn't reuse
+          for (const value of Object.values(m)) {
+            if (value instanceof Texture && value !== m.map) value.dispose()
+          }
+          m.dispose?.()
+        }
+        converted.set(m, next)
+        return next
+      }
+
       targetScene.traverse((child: any) => {
         if (child instanceof Mesh || child instanceof SkinnedMesh) {
-          // Dispose original VRM textures to reclaim ~400MB VRAM per character
-          if (child.material && child.material !== toonMaterial) {
-            const mats = Array.isArray(child.material) ? child.material : [child.material]
-            for (const m of mats) {
-              m.map?.dispose?.()
-              m.normalMap?.dispose?.()
-              m.roughnessMap?.dispose?.()
-              m.dispose?.()
-            }
-          }
-          child.castShadow = true
+          child.material = Array.isArray(child.material)
+            ? child.material.map(convert)
+            : convert(child.material)
+          child.castShadow = !child.name.includes('Face')
+          // Self-shadowing on VRoid meshes produces acne speckle at this scale
           child.receiveShadow = false
-          child.material = toonMaterial
+          // Keep camera occlusion raycasts from treating characters as walls
+          child.userData.isCharacter = true
         }
       })
-    }, [scene, vrm, toonMaterial])
+    }, [scene, vrm, color, gradientMap])
 
     // ── ANIMATION PLAYBACK (IF EMBEDDED CLIPS EXIST) ──
     useEffect(() => {
