@@ -81,6 +81,7 @@ export interface PropLocation {
   interactive: boolean
   panelId?: string        // links to ReadingPanel content
   district: DistrictName
+  render?: boolean        // default true; set false to suppress Kenney stand-in (PhysicalProps renders the real mesh)
 }
 
 export const PROP_LOCATIONS: PropLocation[] = [
@@ -142,6 +143,7 @@ export const PROP_LOCATIONS: PropLocation[] = [
     interactive: true,
     panelId: 'contact',
     district: '/bio',
+    render: false,
   },
   {
     // Q78: Terrace Chalkboard Standee (Resume / CV)
@@ -151,6 +153,7 @@ export const PROP_LOCATIONS: PropLocation[] = [
     interactive: true,
     panelId: 'resume',
     district: '/bio',
+    render: false,
   },
   {
     // Q79: Cafe Terrace Corkboard Guestbook
@@ -160,24 +163,27 @@ export const PROP_LOCATIONS: PropLocation[] = [
     interactive: true,
     panelId: 'guestbook',
     district: '/bio',
+    render: false,
   },
 
   // ── PROJECTS EXHIBITION ───────────────────────────────
   {
     id: 'project-pedestal-01',
-    position: [36, 0, -4],
+    position: [38, 0, -6],
     model: 'construction-cone.glb',
     interactive: true,
     panelId: 'oryzon',
     district: '/projects',
+    render: false,
   },
   {
     id: 'project-pedestal-02',
-    position: [40, 0, -8],
+    position: [42, 0, 6],
     model: 'construction-cone.glb',
     interactive: true,
     panelId: 'roadwarden',
     district: '/projects',
+    render: false,
   },
   {
     id: 'project-archive-terminal',
@@ -186,6 +192,7 @@ export const PROP_LOCATIONS: PropLocation[] = [
     interactive: true,
     panelId: 'archive',
     district: '/projects',
+    render: false,
   },
 
   // ── ESSAYS / LIBRARY ──────────────────────────────────
@@ -196,6 +203,7 @@ export const PROP_LOCATIONS: PropLocation[] = [
     interactive: true,
     panelId: 'brutalist-web',
     district: '/essays',
+    render: false,
   },
   {
     id: 'essay-table-02',
@@ -204,6 +212,7 @@ export const PROP_LOCATIONS: PropLocation[] = [
     interactive: true,
     panelId: 'essay-02',
     district: '/essays',
+    render: false,
   },
   {
     id: '404-flicker-lamp',

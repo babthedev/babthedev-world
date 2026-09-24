@@ -22,6 +22,7 @@ import RoadMarkings from './RoadMarkings'
 import PhysicalProps from './PhysicalProps'
 import WindStreaks from './WindStreaks'
 import EasterEggs from './EasterEggs'
+import { FEATURE_FLAGS } from '@/lib/featureFlags'
 
 interface EnvironmentProps {
   gradientMap: Texture
@@ -86,16 +87,22 @@ function KenneyAsset({
   const { scene } = useGLTF(`/kenney/${model}`)
   const isLamp = model.includes('light') || model.includes('lamp')
   const material = useMemo(() => {
+    // Keep Kenney's shared colour-map texture — windows, doors and trim
+    // live in it. The Monochrome pass flattens it to greyscale.
+    let map: Texture | null = null
+    scene.traverse((child) => {
+      if (!map && child instanceof Mesh) map = (child.material as MeshToonMaterial).map ?? null
+    })
     if (isLamp) {
       return new MeshToonMaterial({
-        color: '#FFFFFF',
+        map,
         emissive: '#FFF6E0',
-        emissiveIntensity: 0.9,
+        emissiveIntensity: 0.4,
         gradientMap,
       })
     }
-    return new MeshToonMaterial({ color, gradientMap })
-  }, [color, gradientMap, isLamp])
+    return map ? new MeshToonMaterial({ map, gradientMap }) : new MeshToonMaterial({ color, gradientMap })
+  }, [scene, color, gradientMap, isLamp])
 
   const clonedScene = useMemo(() => {
     const clone = scene.clone(true)
@@ -185,7 +192,7 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
           get a name tag so InteractiveProps.tsx can raycast them.
           Projected onto sphere surface.
       ──────────────────────────────────────────────── */}
-      {SPHERE_PROPS.map((prop) => (
+      {SPHERE_PROPS.filter((prop) => prop.render !== false).map((prop) => (
         <group
           key={prop.id}
           name={prop.interactive ? `interactive-${prop.id}` : prop.id}
@@ -220,7 +227,7 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
       <PhysicalProps gradientMap={gradientMap} />
 
       {/* ── Q103: ENVIRONMENTAL WIND STREAKS ─────────── */}
-      <WindStreaks />
+      {FEATURE_FLAGS.AMBIENT_PAPER && <WindStreaks />}
 
       {/* ── Q105: ENVIRONMENTAL EASTER EGGS ───────────── */}
       <EasterEggs gradientMap={gradientMap} />
