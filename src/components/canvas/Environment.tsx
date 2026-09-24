@@ -5,6 +5,9 @@ import { useGLTF } from '@react-three/drei'
 import { Mesh, MeshToonMaterial, Texture } from 'three'
 import {
   PROP_LOCATIONS,
+  ADDITIONAL_PROPS,
+  DEAD_END_PROPS,
+  ORYZON_PROPS,
   NPC_LOCATIONS,
 } from '@/lib/worldCoordinates'
 import { mapToSphere, flatToSphere } from '@/lib/surfacePlacement'
@@ -28,7 +31,18 @@ const SPHERE_CAFE_LANTERN_POS = flatToSphere(-42, 3, 2.5).position
 // ── Pre-compute sphere-projected positions at module level ──
 // This avoids recalculating every render.
 
-const SPHERE_PROPS = mapToSphere(PROP_LOCATIONS.map(p => ({
+// PROP_LOCATIONS carries the 8 content-panel anchors (render:false where
+// PhysicalProps.tsx already draws the real mesh — see worldCoordinates.ts);
+// the other three arrays are pure decoration with no PhysicalProps twin
+// and must stay in the render list.
+const ALL_PROPS = [
+  ...PROP_LOCATIONS,
+  ...ADDITIONAL_PROPS,
+  ...DEAD_END_PROPS,
+  ...ORYZON_PROPS,
+]
+
+const SPHERE_PROPS = mapToSphere(ALL_PROPS.map(p => ({
   ...p,
   rotation: p.rotation ?? [0, 0, 0] as [number, number, number],
 })))
