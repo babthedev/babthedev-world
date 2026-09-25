@@ -157,6 +157,15 @@ export const STREETS: Street[] = [
   buildStreet('alley', [[0, RING_R], [0, 76]], false, 1),
 ]
 
+/**
+ * The sample nearest to `metres` along a street. Samples are spaced a little
+ * over 1m, so there are fewer of them than metres: indexing by metres directly
+ * runs off the end of long streets.
+ */
+export function sampleAt(st: Street, metres: number): StreetSample {
+  return st.samples[Math.min(st.samples.length - 1, Math.max(0, Math.round(metres)))]
+}
+
 /** Metres from p to the nearest street centreline (optionally skipping one). */
 export function distToStreets(p: Vector3, skip?: string): number {
   let best = Infinity
@@ -412,6 +421,43 @@ export type PropKind =
   | 'bollard'
 
 export const PROPS: PropInstance[] = []
+
+// ── PAINTED FURNITURE (P5) ──────────────────────────────
+export interface Placed {
+  position: Vector3
+  quaternion: Quaternion
+  scale: Vector3
+}
+
+/**
+ * Sign plates. Glyph textures are generated per variant (see lib/glyphs.ts), so
+ * a variant fixes size and light/dark polarity: shop plates over doors, tall
+ * hanging banners, small pole signs, vending-machine labels.
+ */
+export const SIGN_VARIANTS = [
+  { w: 3.0, h: 0.9, dark: false, vertical: false }, // 0 shop plate, light
+  { w: 2.4, h: 0.8, dark: true, vertical: false }, //  1 shop plate, dark
+  { w: 0.7, h: 2.6, dark: true, vertical: true }, //   2 banner, dark
+  { w: 0.6, h: 2.2, dark: false, vertical: true }, //  3 banner, light
+  { w: 0.6, h: 0.6, dark: false, vertical: false }, // 4 pole sign
+  { w: 0.8, h: 0.26, dark: true, vertical: false }, // 5 vending label
+  { w: 1.7, h: 0.6, dark: false, vertical: false }, // 6 small plate, light
+  { w: 1.3, h: 0.5, dark: true, vertical: false }, //  7 small plate, dark
+] as const
+
+export interface SignInstance extends Placed {
+  variant: number
+}
+export const SIGNS: SignInstance[] = []
+
+function addSign(variant: number, position: Vector3, up: Vector3, facing: Vector3) {
+  const v = SIGN_VARIANTS[variant]
+  SIGNS.push({ variant, position, quaternion: basisQuat(up, facing), scale: new Vector3(v.w, v.h, 1) })
+}
+
+export const TREE_TRUNKS: Placed[] = []
+export const TREE_CANOPY: Placed[] = []
+export const TUFTS: Placed[] = []
 export const WIRE_SEGMENTS: [number, number, number][] = []
 
 function addProp(kind: PropKind, p: Vector3, front: Vector3, h: number, scale: [number, number, number], localOffset?: Vector3) {
@@ -448,7 +494,7 @@ for (const st of STREETS) {
   const poleOffset = ROAD_HALF_WIDTH + 0.7
   let prevPole: { tops: Vector3[] } | null = null
   for (let s = 4; s < st.length - 2; s += POLE_SPACING) {
-    const smp = st.samples[Math.round(s)]
+    const smp = sampleAt(st, s)
     const outward = smp.s.clone().multiplyScalar(side)
     const p = walk(smp.p, outward, poleOffset)
     if (inPlaza(p, 0.5) || distToStreets(p, st.id) < ROAD_HALF_WIDTH + 0.5) {
@@ -459,6 +505,8 @@ for (const st of STREETS) {
     addProp('pole', p, front, POLE_HEIGHT / 2, [0.14, POLE_HEIGHT, 0.14])
     addProp('crossarm', p, front, POLE_HEIGHT - 0.5, [1.8, 0.12, 0.12])
     addProp('posterBand', p, front, 1.7, [0.32, 0.5, 0.32])
+    // Small sign on the pole, facing along the street
+    if (rand() < 0.5) addSign(4, lift(p, 2.5).addScaledVector(front, 0.09), p, front)
     if (rand() < 0.45) {
       addProp('transformer', p, front, POLE_HEIGHT - 2.2, [0.32, 0.8, 0.32], new Vector3(0, 0, 0.3))
     }
@@ -489,7 +537,7 @@ for (const st of STREETS) {
   // ── Guard rails on the side opposite the poles ──
   for (let s = 6; s < st.length - 6; s += 9) {
     if (rand() > 0.35) continue
-    const smp = st.samples[Math.round(s)]
+    const smp = sampleAt(st, s)
     const outward = smp.s.clone().multiplyScalar(-side)
     const p = walk(smp.p, outward, ROAD_HALF_WIDTH + 0.45)
     if (inPlaza(p, 1) || distToStreets(p, st.id) < FRONTAGE) continue
@@ -521,6 +569,7 @@ for (const b of BUILDINGS) {
     if (clearOfBuildings(p, 0.2)) {
       addProp('vending', p, face, 0.9, [1.0, 1.8, 0.7])
       addProp('vendingPanel', p, face, 1.1, [0.78, 1.0, 0.04], new Vector3(0, 0, 0.36))
+      addSign(5, lift(p, 1.7).addScaledVector(face, 0.37), p, face)
       if (rand() < 0.6) addProp('bin', walk(p, b.side, 0.9), face, 0.35, [0.28, 0.7, 0.28])
     }
   } else if (r < 0.34) {
@@ -558,6 +607,90 @@ for (const b of BUILDINGS) {
       })
     }
   }
+}
+
+// ── Shop plates and hanging banners on the frontages ──
+for (const b of BUILDINGS) {
+  if (distToStreets(b.p) > FRONTAGE + b.size[2] / 2 + 1.2) continue
+  const frontEdge = walk(b.p, b.front, b.size[2] / 2)
+
+  if (b.size[1] > 4.5 && rand() < 0.62) {
+    const v = pick([0, 1, 6, 7] as const)
+    const w = SIGN_VARIANTS[v].w
+    if (b.size[0] > w + 0.5) {
+      const sp = walk(frontEdge, b.side, (rand() - 0.5) * (b.size[0] - w - 0.4))
+      const sf = b.front.clone().addScaledVector(sp, -b.front.dot(sp)).normalize()
+      addSign(v, lift(sp, 3.0 + rand() * 0.5).addScaledVector(sf, 0.05), sp, sf)
+    }
+  }
+  if (b.size[1] > 7 && rand() < 0.3) {
+    const v = pick([2, 3] as const)
+    const bp = walk(walk(frontEdge, b.side, (rand() - 0.5) * Math.max(0, b.size[0] - 1.2)), b.front, 0.4)
+    const along = b.side.clone().addScaledVector(bp, -b.side.dot(bp)).normalize()
+    // perpendicular to the wall, so it reads from up and down the street
+    addSign(v, lift(bp, 3.4 + rand() * 1.6), bp, along)
+  }
+}
+
+// ── Trees (Q24: 3–5, sparse and stylised) and grass tufts ──
+function tangentAt(p: Vector3): Vector3 {
+  const ref = Math.abs(p.y) > 0.9 ? new Vector3(1, 0, 0) : new Vector3(0, 1, 0)
+  return ref.addScaledVector(p, -ref.dot(p)).normalize()
+}
+
+const treeSpots: Vector3[] = []
+PLAZAS.slice(0, 4).forEach((pl, pi) => {
+  const want = pi === 0 ? 2 : 1 // the Hub gets a pair
+  let got = 0
+  const t0 = tangentAt(pl.center)
+  const start = rand() * Math.PI * 2
+  for (let k = 0; k < 24 && got < want; k++) {
+    const dir = t0.clone().applyAxisAngle(pl.center, start + (k / 24) * Math.PI * 2)
+    const p = walk(pl.center, dir, pl.radius * 0.78)
+    if (distToStreets(p) < ROAD_HALF_WIDTH + 1.8) continue
+    if (nearProtected(p, 1.4) || !clearOfBuildings(p, 1.6)) continue
+    if (treeSpots.some((q) => arcDist(q, p) < 5)) continue
+    treeSpots.push(p)
+    got++
+  }
+})
+
+for (const p of treeSpots) {
+  const s = 0.9 + rand() * 0.3
+  const q = basisQuat(p, tangentAt(p).applyAxisAngle(p, rand() * Math.PI * 2))
+  TREE_TRUNKS.push({ position: lift(p, 1.7 * s), quaternion: q, scale: new Vector3(0.34 * s, 3.4 * s, 0.34 * s) })
+  const base = lift(p, 0)
+  for (let j = 0; j < 8; j++) {
+    const local = new Vector3((rand() - 0.5) * 2.4, 3.5 + rand() * 1.9, (rand() - 0.5) * 2.4).multiplyScalar(s)
+    const r = (1.0 + rand() * 0.8) * s
+    TREE_CANOPY.push({ position: base.clone().add(local.applyQuaternion(q)), quaternion: q, scale: new Vector3(r, r * 0.85, r) })
+  }
+}
+
+const tuftSpots: Vector3[] = []
+for (const st of STREETS) {
+  for (let s = 2; s < st.length - 2; s += 2.5) {
+    const smp = sampleAt(st, s)
+    for (const side of [1, -1]) {
+      if (rand() > 0.28) continue
+      const p = walk(smp.p, smp.s.clone().multiplyScalar(side), FRONTAGE - 0.35 + rand() * 0.6)
+      if (inPlaza(p, 0.5) || !clearOfBuildings(p, 0.3) || nearProtected(p, 0.6)) continue
+      tuftSpots.push(p)
+    }
+  }
+}
+for (const t of treeSpots) {
+  for (let i = 0; i < 4; i++) {
+    tuftSpots.push(walk(t, tangentAt(t).applyAxisAngle(t, rand() * Math.PI * 2), 0.6 + rand() * 0.6))
+  }
+}
+for (const p of tuftSpots) {
+  const k = 0.55 + rand() * 0.6
+  TUFTS.push({
+    position: lift(p, 0),
+    quaternion: basisQuat(p, tangentAt(p).applyAxisAngle(p, rand() * Math.PI * 2)),
+    scale: new Vector3(k, k * (0.8 + rand() * 0.5), k),
+  })
 }
 
 // ── Convex traffic mirrors + bollards where streets meet plazas ──

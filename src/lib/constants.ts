@@ -53,7 +53,7 @@ export const CAMERA_IMPULSE = 0.03                       // Q145: micro-impulse 
 // matches cast shadows exactly — Messenger's flat lit/shadow split.
 export const TOON_GRADIENT_STEPS = new Uint8Array([0, 255])
 export const OUTLINE_COLOR = '#0B0B0B'
-export const OUTLINE_THICKNESS = 2.4          // drawing-buffer pixels at close range
+export const OUTLINE_THICKNESS = 1.7          // drawing-buffer pixels at close range
 export const OUTLINE_DEPTH_THRESHOLD = 0.06   // relative linear-depth Laplacian
 export const OUTLINE_NORMAL_THRESHOLD = 0.3   // 1 - cos(angle) between neighbour normals
 export const OUTLINE_BOIL_PX = 1.1            // max line wobble, pixels
@@ -61,6 +61,10 @@ export const OUTLINE_BOIL_PX = 1.1            // max line wobble, pixels
 // --- MONOCHROME GRADE (perceptual 0..1) ---
 export const MONO_BLACK = 0.04
 export const MONO_WHITE = 0.97
+// Tone curve applied after the levels. >1 pulls the midtones down: Messenger's
+// frames sit around a median of ~150/255 with over half the pixels in the
+// mid-tones, where a linear grade of our lit walls landed near 200 with ~8%.
+export const MONO_GAMMA = 2.1
 export const MONO_STEPS = 7                   // value bands
 export const MONO_POSTERIZE = 0.55            // 0 = smooth, 1 = hard bands
 
@@ -96,8 +100,10 @@ export const FOG_FAR = 120
 // Three's lights carry a 1/π Lambert factor, so ambient + sun ≈ π keeps a
 // lit albedo at its authored value; ambient alone lands shadows at ~60%
 // of the lit tone in display (sRGB) terms.
-export const AMBIENT_INTENSITY = 1.05
-export const DIRECTIONAL_INTENSITY = 2.1
+// Messenger's shade is ~70% of the lit tone (soft, painted shadows), not the
+// ~40% a 1:2 ambient:sun split gives once the tone curve is applied.
+export const AMBIENT_INTENSITY = 1.5
+export const DIRECTIONAL_INTENSITY = 1.75
 export const SUN_TILT = 1.25                  // tangent lean; min sun elevation = atan(1/tilt) ≈ 39°
 export const SUN_DISTANCE = 40
 export const SHADOW_EXTENT = 18               // half-size of the shadow frustum around the visitor

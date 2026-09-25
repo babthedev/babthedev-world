@@ -3,7 +3,7 @@
 import { forwardRef, useMemo } from 'react'
 import { Effect } from 'postprocessing'
 import { Color, Uniform } from 'three'
-import { INK_COLOR, PAPER_BACKGROUND, MONO_BLACK, MONO_WHITE, MONO_STEPS, MONO_POSTERIZE } from '@/lib/constants'
+import { INK_COLOR, PAPER_BACKGROUND, MONO_BLACK, MONO_WHITE, MONO_GAMMA, MONO_STEPS, MONO_POSTERIZE } from '@/lib/constants'
 
 // ── MONOCHROME GRADE ───────────────────────────────────
 // Guarantees the frame is black & white regardless of source colours,
@@ -17,6 +17,7 @@ const fragmentShader = /* glsl */ `
   uniform vec3 paperColor;
   uniform float blackPoint;
   uniform float whitePoint;
+  uniform float gamma;
   uniform float steps;
   uniform float posterize;
 
@@ -25,6 +26,7 @@ const fragmentShader = /* glsl */ `
     // levels and bands land where the eye expects them, then convert back.
     float lum = pow(max(dot(inputColor.rgb, vec3(0.2126, 0.7152, 0.0722)), 0.0), 1.0 / 2.2);
     lum = clamp((lum - blackPoint) / (whitePoint - blackPoint), 0.0, 1.0);
+    lum = pow(lum, gamma);
     float banded = floor(lum * steps + 0.5) / steps;
     lum = mix(lum, banded, posterize);
     vec3 ink = pow(inkColor, vec3(1.0 / 2.2));
@@ -41,6 +43,7 @@ class MonochromeEffectImpl extends Effect {
         ['paperColor', new Uniform(new Color(PAPER_BACKGROUND))],
         ['blackPoint', new Uniform(MONO_BLACK)],
         ['whitePoint', new Uniform(MONO_WHITE)],
+        ['gamma', new Uniform(MONO_GAMMA)],
         ['steps', new Uniform(MONO_STEPS)],
         ['posterize', new Uniform(MONO_POSTERIZE)],
       ]),

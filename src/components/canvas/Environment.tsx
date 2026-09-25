@@ -19,6 +19,7 @@ import PhysicalProps from './PhysicalProps'
 import WindStreaks from './WindStreaks'
 import EasterEggs from './EasterEggs'
 import { FEATURE_FLAGS } from '@/lib/featureFlags'
+import { paint } from '@/lib/paint'
 
 interface EnvironmentProps {
   gradientMap: Texture
@@ -85,14 +86,17 @@ function KenneyAsset({
       if (!map && child instanceof Mesh) map = (child.material as MeshToonMaterial).map ?? null
     })
     if (isLamp) {
-      return new MeshToonMaterial({
+      return paint(new MeshToonMaterial({
         map,
         emissive: '#FFF6E0',
         emissiveIntensity: 0.4,
         gradientMap,
-      })
+      }), { shadow: 0.3 })
     }
-    return map ? new MeshToonMaterial({ map, gradientMap }) : new MeshToonMaterial({ color, gradientMap })
+    return paint(
+      map ? new MeshToonMaterial({ map, gradientMap }) : new MeshToonMaterial({ color, gradientMap }),
+      { shadow: 0.35 }
+    )
   }, [scene, color, gradientMap, isLamp])
 
   const clonedScene = useMemo(() => {

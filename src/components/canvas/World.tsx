@@ -1,7 +1,8 @@
 'use client'
 
 import { useMemo } from 'react'
-import { DataTexture, RedFormat } from 'three'
+import { DataTexture, MeshToonMaterial, RedFormat } from 'three'
+import { paint } from '@/lib/paint'
 import { Physics, RigidBody, BallCollider } from '@react-three/rapier'
 import VisitorController from './VisitorController'
 import AbdulrahmanController from './AbdulrahmanController'
@@ -39,6 +40,12 @@ export default function World() {
     return texture
   }, [])
 
+  // The planet between the streets: worn patches + brush strokes in the shade
+  const groundMaterial = useMemo(
+    () => paint(new MeshToonMaterial({ color: GROUND_COLOR, gradientMap }), { shadow: 0.36, blotch: 0.2 }),
+    [gradientMap]
+  )
+
   return (
     <Physics
       timeStep="vary"
@@ -66,7 +73,7 @@ export default function World() {
       <RigidBody type="fixed" name="ground" colliders={false}>
         <mesh receiveShadow>
           <sphereGeometry args={[PLANET_RADIUS, SPHERE_SEGMENTS, SPHERE_SEGMENTS]} />
-          <meshToonMaterial color={GROUND_COLOR} gradientMap={gradientMap} />
+          <primitive object={groundMaterial} attach="material" />
         </mesh>
         {/* Physics collider matching the visual sphere */}
         <BallCollider args={[PLANET_RADIUS]} />

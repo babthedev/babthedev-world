@@ -11,6 +11,7 @@ import {
   DoubleSide,
   Euler,
   Float32BufferAttribute,
+  IcosahedronGeometry,
   InstancedMesh,
   Matrix4,
   Mesh,
@@ -32,11 +33,18 @@ import {
   PLAZAS,
   PROPS,
   PropKind,
+  SIGNS,
+  SIGN_VARIANTS,
   StripRun,
+  TREE_CANOPY,
+  TREE_TRUNKS,
+  TUFTS,
   WIRE_SEGMENTS,
   lift,
 } from '@/lib/streetLayout'
+import { signTexture } from '@/lib/glyphs'
 import { INK_COLOR, PLANET_RADIUS } from '@/lib/constants'
+import { paint } from '@/lib/paint'
 
 // ── TONAL PALETTE ──────────────────────────────────────
 // Everything is greyscale; the Monochrome pass guarantees the
@@ -169,7 +177,8 @@ function Buildings({ gradientMap }: { gradientMap: Texture }) {
         }
       })
     })
-    const material = new MeshToonMaterial({ map: colormap, gradientMap })
+    // Painted layer: brush strokes in the shade, dashed hatching on the walls
+    const material = paint(new MeshToonMaterial({ map: colormap, color: '#D0D0CB', gradientMap }), { shadow: 0.42, hatch: 0.3 })
     return BUILDING_MODELS.map((model) => ({
       model,
       geometry: geoByModel.get(model)!,
@@ -203,10 +212,26 @@ function BuildingColliders() {
       }),
     []
   )
+  // Tree trunks block the way too (canopies are far overhead)
+  const trunks = useMemo(
+    () =>
+      TREE_TRUNKS.map((t) => {
+        const e = new Euler().setFromQuaternion(t.quaternion)
+        return {
+          position: [t.position.x, t.position.y, t.position.z] as [number, number, number],
+          rotation: [e.x, e.y, e.z] as [number, number, number],
+          args: [0.26, t.scale.y / 2, 0.26] as [number, number, number],
+        }
+      }),
+    []
+  )
   return (
     <RigidBody type="fixed" colliders={false} name="building-colliders">
       {colliders.map((c, i) => (
         <CuboidCollider key={i} {...c} />
+      ))}
+      {trunks.map((c, i) => (
+        <CuboidCollider key={`trunk-${i}`} {...c} />
       ))}
     </RigidBody>
   )
@@ -222,11 +247,14 @@ function StreetProps({ gradientMap }: { gradientMap: Texture }) {
     }
     return [...byKind.entries()].map(([kind, matrices]) => {
       const style = PROP_STYLE[kind]
-      const material = new MeshToonMaterial({
-        color: style.color,
-        gradientMap,
-        side: style.geo === 'plane' ? DoubleSide : undefined,
-      })
+      const material = paint(
+        new MeshToonMaterial({
+          color: style.color,
+          gradientMap,
+          side: style.geo === 'plane' ? DoubleSide : undefined,
+        }),
+        { shadow: 0.3 }
+      )
       return { kind, geometry: GEOMETRIES[style.geo], material, matrices }
     })
   }, [gradientMap])
@@ -252,10 +280,10 @@ function RoadSurfaces({ gradientMap }: { gradientMap: Texture }) {
       curbFace: stripGeometry(CURB_FACE_RUNS),
       crosswalks: quadGeometry(CROSSWALK_QUADS),
       materials: {
-        asphalt: mat(TONE.asphalt, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+        asphalt: paint(mat(TONE.asphalt, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), { shadow: 0.4, blotch: 0.24 }),
         line: mat(TONE.line, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
-        curb: mat(TONE.curb, { side: DoubleSide }),
-        plaza: mat(TONE.plaza, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+        curb: paint(mat(TONE.curb, { side: DoubleSide }), { shadow: 0.3 }),
+        plaza: paint(mat(TONE.plaza, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), { shadow: 0.4, blotch: 0.2 }),
       },
     }
   }, [gradientMap])
@@ -283,6 +311,90 @@ function RoadSurfaces({ gradientMap }: { gradientMap: Texture }) {
   )
 }
 
+// ── TREES & GRASS (P5) ─────────────────────────────────
+// Canopies are clusters of low-poly blobs: the outline pass inks the creases
+// between them, which is what makes a clump read as leaves.
+const CANOPY_GEO = new IcosahedronGeometry(1, 1)
+
+// A tuft: five thin blades fanned out and leaning away from the centre
+function makeTuftGeometry() {
+  const pos: number[] = []
+  const blades = 5
+  for (let i = 0; i < blades; i++) {
+    const a = (i / blades) * Math.PI * 2 + 0.4
+    const lean = 0.13 + (i % 3) * 0.05
+    const h = 0.4 + (i % 2) * 0.14
+    const px = -Math.sin(a) * 0.035
+    const pz = Math.cos(a) * 0.035
+    const bx = Math.cos(a) * 0.03
+    const bz = Math.sin(a) * 0.03
+    pos.push(bx - px, 0, bz - pz, bx + px, 0, bz + pz, Math.cos(a) * lean, h, Math.sin(a) * lean)
+  }
+  const g = new BufferGeometry()
+  g.setAttribute('position', new Float32BufferAttribute(pos, 3))
+  g.computeVertexNormals()
+  return g
+}
+const TUFT_GEO = makeTuftGeometry()
+
+function Foliage({ gradientMap }: { gradientMap: Texture }) {
+  const parts = useMemo(() => {
+    const toMatrices = (list: { position: Vector3; quaternion: Quaternion; scale: Vector3 }[]) =>
+      list.map((p) => new Matrix4().compose(p.position, p.quaternion, p.scale))
+    const mat = (color: string, opts: Parameters<typeof paint>[1], side?: typeof DoubleSide) =>
+      paint(new MeshToonMaterial({ color, gradientMap, side }), opts)
+    return {
+      trunk: { geometry: GEOMETRIES.cyl, material: mat('#4A4844', { shadow: 0.3 }), matrices: toMatrices(TREE_TRUNKS) },
+      canopy: { geometry: CANOPY_GEO, material: mat('#74736E', { shadow: 0.46, speckle: 0.3 }), matrices: toMatrices(TREE_CANOPY) },
+      tufts: { geometry: TUFT_GEO, material: mat('#5C5A55', { shadow: 0.3 }, DoubleSide), matrices: toMatrices(TUFTS) },
+    }
+  }, [gradientMap])
+
+  return (
+    <group name="foliage">
+      <Instances {...parts.trunk} />
+      <Instances {...parts.canopy} />
+      <Instances castShadow={false} {...parts.tufts} />
+    </group>
+  )
+}
+
+// ── GLYPH SIGNS (P5) ───────────────────────────────────
+const SIGN_GEO = new PlaneGeometry(1, 1)
+
+function Signs({ gradientMap }: { gradientMap: Texture }) {
+  const groups = useMemo(
+    () =>
+      SIGN_VARIANTS.map((spec, variant) => {
+        const map = signTexture(variant, spec)
+        const material = paint(
+          new MeshToonMaterial({
+            map,
+            color: map ? '#FFFFFF' : spec.dark ? '#151515' : '#F3F2ED',
+            gradientMap,
+            side: DoubleSide,
+            polygonOffset: true,
+            polygonOffsetFactor: -2,
+            polygonOffsetUnits: -2,
+          }),
+          { shadow: 0.2 }
+        )
+        const matrices = SIGNS.filter((s) => s.variant === variant).map((s) =>
+          new Matrix4().compose(s.position, s.quaternion, s.scale)
+        )
+        return { variant, geometry: SIGN_GEO, material, matrices }
+      }),
+    [gradientMap]
+  )
+  return (
+    <group name="signs">
+      {groups.map((g) => (
+        <Instances key={g.variant} castShadow={false} {...g} />
+      ))}
+    </group>
+  )
+}
+
 // ── OVERHEAD WIRES ─────────────────────────────────────
 function Wires() {
   if (WIRE_SEGMENTS.length === 0) return null
@@ -296,6 +408,8 @@ export default function StreetKit({ gradientMap }: { gradientMap: Texture }) {
       <Buildings gradientMap={gradientMap} />
       <BuildingColliders />
       <StreetProps gradientMap={gradientMap} />
+      <Foliage gradientMap={gradientMap} />
+      <Signs gradientMap={gradientMap} />
       <Wires />
     </group>
   )
