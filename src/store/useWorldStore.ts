@@ -10,6 +10,12 @@ const INITIAL_SURFACE_Y = PLANET_RADIUS + CHARACTER_CAPSULE_HEIGHT
 
 interface WelcomeSlice {
   introComplete: boolean
+  /** Both main characters have loaded and are on screen. The intro's auto-dismiss timer waits for this. */
+  charactersReady: boolean
+  setCharactersReady: (v: boolean) => void
+  /** The opening handshake is running (mirrors lib/greeting.ts for React consumers). */
+  greetingActive: boolean
+  setGreetingActive: (v: boolean) => void
   setIntroComplete: (v: boolean) => void
 }
 
@@ -112,6 +118,10 @@ export const useWorldStore = create<WorldStore>((set) => ({
 
   // Welcome
   introComplete: false,
+  charactersReady: false,
+  setCharactersReady: (v) => set({ charactersReady: v }),
+  greetingActive: false,
+  setGreetingActive: (v) => set({ greetingActive: v }),
   setIntroComplete: (v) => set({ introComplete: v }),
 
   // Tour

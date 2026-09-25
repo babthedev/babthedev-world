@@ -50,3 +50,13 @@ meshopt-compressed. It does **not** use gltf-transform, which silently drops the
 values, every image decodes, nodes/materials/extensions unchanged) before it is
 written, and re-running is a no-op. `pnpm assets:budget` enforces 12MB for all
 character models together.
+
+## Opening handshake
+
+The opening handshake is procedural, not a clip: `lib/greeting.ts` solves the right
+arm with two-bone IK so both hands meet at the midpoint of the two characters' real
+shoulders (it works for any pair of models). It runs during the intro dialogue and the
+tour waits for it. It is skipped for `prefers-reduced-motion`, for a dev `__TELEPORT__`,
+and whenever the intro is already over. To replace it with authored animation, provide a
+paired `handshake` clip for each character and drive it from `GreetingDirector` instead
+of the IK; the timeline, turning, camera and tour hold can stay as they are.

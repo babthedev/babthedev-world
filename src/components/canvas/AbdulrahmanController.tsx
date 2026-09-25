@@ -28,7 +28,9 @@ import {
   projectOntoTangentPlane,
   settleFacing,
   orientFromFacing,
+  turnToward,
 } from '@/lib/sphereMath'
+import { greeting } from '@/lib/greeting'
 import { flatToSphere, mapSpawnToSphere } from '@/lib/surfacePlacement'
 import { emitFootstepPuff } from './FootstepPuffs'
 import { useTelemetry } from '@/hooks/useTelemetry'
@@ -146,7 +148,9 @@ export default function AbdulrahmanController() {
   }, [tourWaypointIndex, isTourActive, setCurrentDialogue])
 
   useFrame((state, delta) => {
-    if (!bodyRef.current || !modelRef.current || !introComplete) return
+    if (!bodyRef.current || !modelRef.current) return
+    // Idle until the intro ends, except for the opening handshake
+    if (!introComplete && !greeting.active) return
 
     const pos = bodyRef.current.translation()
     _posVec.set(pos.x, pos.y, pos.z)
@@ -157,7 +161,12 @@ export default function AbdulrahmanController() {
 
     _direction.set(0, 0, 0)
 
-    if (isReading) {
+    if (greeting.active) {
+      // Opening handshake: stand still and turn to face the visitor
+      _faceDir.set(visitorPosition[0], visitorPosition[1], visitorPosition[2]).sub(_posVec)
+      settleFacing(_normal, _faceDir)
+      turnToward(facingRef.current, _faceDir, _normal, 7 * delta)
+    } else if (isReading) {
       // Waiting animation handled via animState below — no movement
     } else if (isTourActive) {
       // ── GUIDED TOUR: follow waypoint array with adaptive waiting (Q117) ──

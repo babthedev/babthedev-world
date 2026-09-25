@@ -7,6 +7,7 @@ import { useAudioManager } from '@/hooks/useAudioManager'
 
 export default function DialogueBubble() {
   const currentDialogue = useWorldStore((s) => s.currentDialogue)
+  const greetingActive = useWorldStore((s) => s.greetingActive)
   const { playDialogueBlip } = useAudioManager()
 
   const [displayedText, setDisplayedText] = useState('')
@@ -41,7 +42,8 @@ export default function DialogueBubble() {
     return () => clearInterval(interval)
   }, [currentDialogue, playDialogueBlip])
 
-  if (!currentDialogue) return null
+  // The opening handshake is framed as a two-shot; a speech bubble would only crowd it
+  if (!currentDialogue || greetingActive) return null
 
   return (
     <Html

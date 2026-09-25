@@ -9,6 +9,7 @@ import AbdulrahmanController from './AbdulrahmanController'
 import TriggerZones from './TriggerZones'
 import Environment from './Environment'
 import StreetKit from './StreetKit'
+import GreetingDirector from './GreetingDirector'
 import OryzonGate from './OryzonGate'
 import RadialGravityField from './RadialGravityField'
 import {
@@ -80,6 +81,7 @@ export default function World() {
       </RigidBody>
 
       {/* ── CHARACTERS ──────────────────────────────── */}
+      <GreetingDirector />
       <VisitorController />
       <AbdulrahmanController />
 

@@ -19,6 +19,7 @@ import {
 } from '@/lib/constants'
 import { getSurfaceNormal, getTangentBasis, settleFacing } from '@/lib/sphereMath'
 import { cameraRig } from '@/lib/cameraRig'
+import { greeting } from '@/lib/greeting'
 
 // Pre-allocated vectors — avoids GC pressure inside useFrame
 const _desired = new Vector3()
@@ -51,6 +52,7 @@ export default function CameraController() {
   // consistent as the visitor walks a great circle.
   const dialogueGlide = useRef(0)
   const arrivalElevation = useRef(0)
+  const greetBlend = useRef(0) // 0..1: tight two-shot for the opening handshake
 
   // Q142: Pitch angle tracking (vertical orbit offset relative to tangent plane)
   const pitchAngle = useRef(0)
@@ -110,7 +112,10 @@ export default function CameraController() {
       arrivalAlpha
     )
 
-    const targetDist = CAMERA_BACK - dialogueGlide.current * CAMERA_DIALOGUE_PULL
+    // Opening handshake: move in for a two-shot and aim low, so the pair sits above
+    // the intro dialogue panel instead of behind it
+    greetBlend.current = MathUtils.lerp(greetBlend.current, greeting.active ? 1 : 0, Math.min(1, 3 * dt))
+    const targetDist = (CAMERA_BACK - dialogueGlide.current * CAMERA_DIALOGUE_PULL) * (1 - 0.3 * greetBlend.current)
     const dialogueAngleOffset = dialogueGlide.current * 0.35
     const a = smoothedAngle + dialogueAngleOffset
 
@@ -153,6 +158,7 @@ export default function CameraController() {
     _lookAt.set(vx, vy, vz)
       .addScaledVector(_normal, CAMERA_LOOK_HEIGHT)
       .addScaledVector(_behindDir, -CAMERA_LOOK_AHEAD * (1 - dialogueGlide.current * 0.6))
+      .addScaledVector(_normal, -0.85 * greetBlend.current)
 
     // ── Q141: SPRING-ARM OCCLUSION RAYCAST ──────────────
     // Pulls camera forward 0.3m off blocking walls to avoid clipping

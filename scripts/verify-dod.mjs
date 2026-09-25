@@ -251,6 +251,9 @@ check('Q53: characters ghost through each other',
   fileContains('src/components/canvas/AbdulrahmanController.tsx', 'interactionGroups'))
 check('P6 pipeline: building kit loads from public/town via a generated manifest',
   fileExists('scripts/build-town-manifest.mjs') && fileExists('src/lib/townManifest.ts') && fileContains('src/lib/streetLayout.ts', 'TOWN_ACTIVE'))
+check('Opening handshake: director mounted, IK arm, camera two-shot',
+  fileExists('src/lib/greeting.ts') && fileContains('src/components/canvas/World.tsx', 'GreetingDirector') &&
+  fileContains('src/components/canvas/CharacterModel.tsx', 'solveRightArm') && fileContains('src/components/canvas/CameraController.tsx', 'greetBlend'))
 check('Regression tests cover movement and the low tier',
   fileContains('tests/visual.spec.ts', 'Visitor movement') && fileContains('tests/visual.spec.ts', 'quality=low'))
 

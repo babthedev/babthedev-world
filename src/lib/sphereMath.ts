@@ -118,6 +118,7 @@ export function alignToNormalQuaternion(pos: Vector3, yaw: number = 0): Quaterni
 }
 
 const _fx = new Vector3()
+const _tc = new Vector3()
 const _fz = new Vector3()
 const _fm = new Matrix4()
 
@@ -133,6 +134,15 @@ export function settleFacing(normal: Vector3, facing: Vector3): Vector3 {
   facing.addScaledVector(normal, -facing.dot(normal))
   if (facing.lengthSq() < 1e-8) facing.copy(getTangentBasis(normal).forward)
   return facing.normalize()
+}
+
+/**
+ * Rotates `current` about `normal` toward `target` by at most `maxRad`
+ * (in place, shortest way round). Both should already be tangent to the surface.
+ */
+export function turnToward(current: Vector3, target: Vector3, normal: Vector3, maxRad: number): Vector3 {
+  const angle = Math.atan2(normal.dot(_tc.crossVectors(current, target)), current.dot(target))
+  return current.applyAxisAngle(normal, Math.sign(angle) * Math.min(Math.abs(angle), maxRad))
 }
 
 /**

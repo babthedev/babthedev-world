@@ -5,8 +5,9 @@ import type { Object3D } from 'three'
 interface DevWindow extends Window {
   __VISITOR__: () => { pos: number[]; vel: number[] }
   __TELEPORT__: (x: number, z: number, lookX: number, lookZ: number) => void
-  __WORLD_STORE__: { getState: () => { setIntroComplete: (v: boolean) => void } }
   __THREE_SCENE__: Object3D
+  __GREETING__: { t: number; active: boolean; done: boolean; weight: number }
+  __WORLD_STORE__: { getState: () => { position: number[]; abdulrahmanPosition: number[]; introComplete: boolean; setIntroComplete: (v: boolean) => void } }
 }
 
 /**
@@ -60,6 +61,9 @@ test.describe('BabWorld 3D Visual Integrity', () => {
   })
 
   test('opens in-world contact letter modal', async ({ page }) => {
+    // The intro overlay blocks the HUD until the characters have loaded and it has run
+    // its course, which takes a while under parallel software-rendered load.
+    test.setTimeout(120_000)
     await page.goto('/')
 
     const contactButton = page.locator('button[aria-label="Send letter / Contact Abdulrahman"]')
@@ -165,5 +169,47 @@ test.describe('Visitor movement', () => {
     const dot = (a: number[], b: number[]) => (a[0] * b[0] + a[1] * b[1] + a[2] * b[2]) / (Math.hypot(...a) * Math.hypot(...b))
     expect(dot(w.facing, w.vel)).toBeGreaterThan(0.98)
     expect(dot(d.facing, d.vel)).toBeGreaterThan(0.98)
+  })
+})
+
+/**
+ * The opening handshake: while the intro dialogue plays, the two characters turn
+ * to face each other and shake hands, then the tour starts. Asserted on geometry
+ * (the two right-hand bones meet), not on "something animated". Skips itself
+ * against a production build, where the dev hooks are absent.
+ */
+test.describe('Opening handshake', () => {
+  test.describe.configure({ timeout: 240_000 })
+
+  test('the characters shake hands: hands meet, then let go', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => !!(window as unknown as DevWindow).__GREETING__, undefined, { timeout: 150000 }).catch(() => null)
+    const hooks = await page.evaluate(() => !!(window as unknown as DevWindow).__GREETING__)
+    test.skip(!hooks, 'dev-only window hooks are not available in this build')
+
+    // wait for the clasp
+    await page.waitForFunction(() => {
+      const g = (window as unknown as DevWindow).__GREETING__
+      return g.active && g.t > 1.3 && g.weight > 0.95
+    }, undefined, { timeout: 120000, polling: 30 })
+
+    const gap = await page.evaluate(() => {
+      const w = window as unknown as DevWindow
+      const store = w.__WORLD_STORE__.getState()
+      const hands: Object3D[] = []
+      w.__THREE_SCENE__.traverse((o: Object3D) => o.name === 'Normalized_J_Bip_R_Hand' && hands.push(o))
+      const pos = (o: Object3D) => o.getWorldPosition(o.position.clone())
+      const dist = (a: { x: number; y: number; z: number }, b: number[]) => Math.hypot(a.x - b[0], a.y - b[1], a.z - b[2])
+      const nearest = (p: number[]) => hands.map(pos).sort((a, b) => dist(a, p) - dist(b, p))[0]
+      const a = nearest(store.position)
+      const b = nearest(store.abdulrahmanPosition)
+      return { gapCm: Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z) * 100, introComplete: store.introComplete }
+    })
+    expect(gap.gapCm, 'right hands are within 10cm at the clasp').toBeLessThan(10)
+    expect(gap.introComplete, 'the intro is still on screen during the handshake').toBe(false)
+
+    // ...and they let go and the greeting ends
+    await page.waitForFunction(() => (window as unknown as DevWindow).__GREETING__.done, undefined, { timeout: 60000 })
+    expect(await page.evaluate(() => (window as unknown as DevWindow).__GREETING__.weight)).toBe(0)
   })
 })

@@ -5,6 +5,7 @@ import { useGLTF, useAnimations } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
 import { VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm'
 import { useVrmaPlayer } from '@/hooks/useVrmaPlayer'
+import { GREETING_TIMELINE, greeting, solveRightArm } from '@/lib/greeting'
 import type { AnimationState } from '@/hooks/useCharacterAnimations'
 import {
   Euler,
@@ -41,6 +42,13 @@ const _lookDirLocal = new Vector3()
 const _groupWorldQuat = new Quaternion()
 const _lookEuler = new Euler()
 const _lookQuat = new Quaternion()
+const _handTarget = new Vector3()
+const _shoulder = new Vector3()
+const _mid = new Vector3()
+const _up = new Vector3()
+const _parentQuat = new Quaternion()
+const _qUpperTarget = new Quaternion()
+const _qLowerTarget = new Quaternion()
 
 const CharacterModel = forwardRef<Group, CharacterModelProps>(
   (
@@ -179,12 +187,26 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
         rightUpperArm: vrm.humanoid.getNormalizedBoneNode('rightUpperArm') as Object3D | null,
         leftLowerArm: vrm.humanoid.getNormalizedBoneNode('leftLowerArm') as Object3D | null,
         rightLowerArm: vrm.humanoid.getNormalizedBoneNode('rightLowerArm') as Object3D | null,
+        rightHand: vrm.humanoid.getNormalizedBoneNode('rightHand') as Object3D | null,
         leftUpperLeg: vrm.humanoid.getNormalizedBoneNode('leftUpperLeg') as Object3D | null,
         rightUpperLeg: vrm.humanoid.getNormalizedBoneNode('rightUpperLeg') as Object3D | null,
         leftLowerLeg: vrm.humanoid.getNormalizedBoneNode('leftLowerLeg') as Object3D | null,
         rightLowerLeg: vrm.humanoid.getNormalizedBoneNode('rightLowerLeg') as Object3D | null,
       }
     }, [vrm])
+
+    // ── OPENING HANDSHAKE ──────────────────────────────
+    // The two main characters tell the greeting director when they have loaded,
+    // and take the right-arm pose it drives (see lib/greeting.ts).
+    const takesPartInGreeting = resolvedType === 'visitor' || resolvedType === 'abdulrahman'
+    useEffect(() => {
+      if (vrm && takesPartInGreeting) greeting.ready[resolvedType as 'visitor' | 'abdulrahman'] = true
+    }, [vrm, takesPartInGreeting, resolvedType])
+    // Bone lengths read from the rig itself: normalised bones sit at their rest offsets
+    const armLengths = useMemo(() => {
+      if (!bones?.rightLowerArm || !bones.rightHand) return null
+      return { upper: bones.rightLowerArm.position.length(), lower: bones.rightHand.position.length() }
+    }, [bones])
 
     // ── PROCEDURAL ANIMATION & Q101/Q102 TRACKERS ──────
     const idleTimeRef = useRef(0)
@@ -494,6 +516,29 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
             bones.neck.rotation.x = currentHeadPitchRef.current * 0.3
           }
         }
+      }
+
+      // ── OPENING HANDSHAKE: IK the right arm toward the midpoint ──
+      // Applied last so it blends over whatever the clip or the procedural
+      // animation produced, then fades back out.
+      if (greeting.active && takesPartInGreeting && bones.rightUpperArm) {
+        greeting.shoulder[resolvedType as 'visitor' | 'abdulrahman'].copy(bones.rightUpperArm.getWorldPosition(_shoulder))
+      }
+      if (greeting.weight > 0.001 && takesPartInGreeting && armLengths && bones.rightUpperArm && bones.rightLowerArm) {
+        // The hands meet halfway between the two real right shoulders, a little
+        // lower, pumping along the local up direction.
+        const mine = bones.rightUpperArm.getWorldPosition(_shoulder)
+        const theirs = greeting.shoulder[resolvedType === 'visitor' ? 'abdulrahman' : 'visitor']
+        _mid.copy(mine).add(theirs).multiplyScalar(0.5)
+        _up.copy(_mid).normalize()
+        _mid.addScaledVector(_up, -GREETING_TIMELINE.handDrop + greeting.pump)
+        // world offset from my shoulder → the shoulder bone's parent frame
+        _handTarget.copy(_mid).sub(mine)
+        bones.rightUpperArm.parent!.getWorldQuaternion(_parentQuat).invert()
+        _handTarget.applyQuaternion(_parentQuat)
+        solveRightArm(armLengths.upper, armLengths.lower, _handTarget, _qUpperTarget, _qLowerTarget)
+        bones.rightUpperArm.quaternion.slerp(_qUpperTarget, greeting.weight)
+        bones.rightLowerArm.quaternion.slerp(_qLowerTarget, greeting.weight)
       }
 
       // Update VRM internals (spring bones, materials, constraints)

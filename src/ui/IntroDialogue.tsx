@@ -11,6 +11,7 @@ export default function IntroDialogue() {
   const introComplete = useWorldStore((s) => s.introComplete)
   const setIntroComplete = useWorldStore((s) => s.setIntroComplete)
   const setTourActive = useWorldStore((s) => s.setTourActive)
+  const charactersReady = useWorldStore((s) => s.charactersReady)
   const { playDialogueBlip, playTypewriterTap } = useAudioManager()
   const { trackEvent } = useTelemetry()
 
@@ -66,11 +67,14 @@ export default function IntroDialogue() {
   // ── AUTO-DISMISS AFTER 7 SECONDS ────────────────────────
   // Per spec: visitor can click through manually, OR it
   // auto-advances to the world after 7s of total inactivity.
+  // The clock starts when the characters are on screen, not when the page mounts:
+  // on a slow connection the model download can outlast the timer and the intro
+  // (and the opening handshake) would be over before anyone had appeared.
   useEffect(() => {
-    if (introComplete) return
+    if (introComplete || !charactersReady) return
     const timer = setTimeout(finishIntro, INTRO_AUTO_DISMISS_MS)
     return () => clearTimeout(timer)
-  }, [introComplete, finishIntro])
+  }, [introComplete, charactersReady, finishIntro])
 
   // ── SPACE / ENTER TO ADVANCE ────────────────────────────
   useEffect(() => {

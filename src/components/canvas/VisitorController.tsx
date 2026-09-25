@@ -29,10 +29,12 @@ import {
   projectOntoTangentPlane,
   settleFacing,
   orientFromFacing,
+  turnToward,
 } from '@/lib/sphereMath'
 import { mapSpawnToSphere } from '@/lib/surfacePlacement'
 import { emitFootstepPuff } from './FootstepPuffs'
 import { cameraRig } from '@/lib/cameraRig'
+import { greeting, skipGreeting } from '@/lib/greeting'
 
 // Shared gradient texture — created once here, passed down.
 const gradientMap = new DataTexture(
@@ -52,6 +54,7 @@ const _posVec = new Vector3()
 const _normal = new Vector3()
 const _currentVel = new Vector3()
 const _qAlign = new Quaternion()
+const _greetDir = new Vector3()
 
 // Spawn on the north pole of the sphere (top), slightly above surface
 const SPAWN_HEIGHT = PLANET_RADIUS + CHARACTER_CAPSULE_HEIGHT
@@ -127,6 +130,7 @@ export default function VisitorController() {
       cameraRig.heading.copy(look)
       setFacingDir([look.x, look.y, look.z])
       setTourActive(false)
+      skipGreeting() // a teleport means a script or a developer is driving, not the intro
       setPosition(spawn)
       // isTourActive is a render-time value, so for a frame or two after this the
       // tour branch can still steer the visitor toward the guide and overwrite the
@@ -232,11 +236,21 @@ export default function VisitorController() {
       }
     }
 
+    // ── OPENING HANDSHAKE: stand still and turn to face the guide ──
+    if (greeting.active) {
+      _direction.set(0, 0, 0)
+      _greetDir.set(abdulPos[0], abdulPos[1], abdulPos[2]).sub(_posVec)
+      settleFacing(_normal, _greetDir)
+      turnToward(facingRef.current, _greetDir, _normal, 7 * delta)
+    }
+
     // ── CAMERA FOLLOW RATE (Q11) ─────────────────────────
     // Idle: gently orbit toward the facing. Moving: follow only the FORWARD part
     // of the input, slowly, so W+D steers in an arc while pure strafe / back
     // go straight instead of circling.
-    if (_direction.lengthSq() < 1e-6) {
+    if (greeting.active) {
+      cameraRig.followRate = 0 // the director frames the pair
+    } else if (_direction.lengthSq() < 1e-6) {
       cameraRig.followRate = CAMERA_FOLLOW_IDLE
     } else if (isTourActive) {
       cameraRig.followRate = CAMERA_FOLLOW_MOVING

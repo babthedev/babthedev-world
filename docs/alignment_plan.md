@@ -1641,6 +1641,7 @@ records what was built and why it deviates. See also `docs/ANIMATIONS.md`.
 | Q40, Q68 | Paper cranes and drifting flecks | Off by default behind `NEXT_PUBLIC_AMBIENT_PAPER` | They read as rendering artefacts against a dense street; revisit as rare flyovers |
 | Q41 | 3 HUD elements | 5 light tiles (photo, map, contact, colophon, mute) plus a bottom-left district title card | The features already existed and are used; restyled rather than removed |
 | Q53 | Ghosting characters | Implemented with collision groups | The guide's capsule was shoving the visitor sideways |
+| Q80, Q117 | Tour starts when the intro ends | **Opening handshake**: while the intro dialogue plays, the two characters turn to face each other and shake hands (~3s: reach, three pumps, release); the tour waits for it. Procedural two-bone IK to the midpoint of the two real shoulders, camera in a tight profile two-shot. The intro's auto-dismiss clock now starts when both characters have loaded | Slow model loads used to outlast the 7s timer, ending the intro before anyone appeared. Skipped for reduced-motion and when the intro is already over |
 | Q57 | Two-tier post stack | Implemented: `high` (2048 shadows, normal-buffer outlines, SMAA, dpr 1.5) and `low` (1024, depth-only outlines, no SMAA, dpr 1). Auto by cores, memory and *coarse pointer*; `?quality=` forces | Measured: about 41% fewer draw calls, 40% fewer triangles |
 
 ### Known gaps
