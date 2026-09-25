@@ -1,9 +1,8 @@
 'use client'
 
 import { useMemo } from 'react'
-import { Text } from '@react-three/drei'
 import { flatToSphere } from '@/lib/surfacePlacement'
-import { WORLD_FONT } from '@/lib/worldFont'
+import SignText from './SignText'
 
 /**
  * In-world directional signage mounted on the Hub's highway signposts (Q87).
@@ -21,9 +20,9 @@ export default function InWorldSignage() {
     <group>
       {/* ── NORTH SIGN ───────────────────────────────────────── */}
       <group position={northSign.position} quaternion={northSign.quaternion}>
-        <Text
-        font={WORLD_FONT}
-          position={[0, 0, 0.1]}
+        <SignText
+          position={[0, 0, 0]}
+          faceOffset={0.1}
           fontSize={0.24}
           color="#0B0B0B"
           anchorX="center"
@@ -31,14 +30,14 @@ export default function InWorldSignage() {
           letterSpacing={0.12}
         >
           {'^ THE LIBRARY'}
-        </Text>
+        </SignText>
       </group>
 
       {/* ── WEST SIGN ────────────────────────────────────────── */}
       <group position={westSign.position} quaternion={westSign.quaternion}>
-        <Text
-        font={WORLD_FONT}
-          position={[0, 0, 0.1]}
+        <SignText
+          position={[0, 0, 0]}
+          faceOffset={0.1}
           rotation={[0, Math.PI / 2, 0]}
           fontSize={0.22}
           color="#0B0B0B"
@@ -47,14 +46,14 @@ export default function InWorldSignage() {
           letterSpacing={0.12}
         >
           {'< TERRACE / BIO'}
-        </Text>
+        </SignText>
       </group>
 
       {/* ── EAST SIGN ────────────────────────────────────────── */}
       <group position={eastSign.position} quaternion={eastSign.quaternion}>
-        <Text
-        font={WORLD_FONT}
-          position={[0, 0, 0.1]}
+        <SignText
+          position={[0, 0, 0]}
+          faceOffset={0.1}
           rotation={[0, -Math.PI / 2, 0]}
           fontSize={0.22}
           color="#0B0B0B"
@@ -63,7 +62,7 @@ export default function InWorldSignage() {
           letterSpacing={0.12}
         >
           {'PROJECTS >'}
-        </Text>
+        </SignText>
       </group>
     </group>
   )
