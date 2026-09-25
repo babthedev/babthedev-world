@@ -26,7 +26,6 @@ export default function GlobalCanvas() {
   useTourLogic()
   usePageVisibility()
 
-  console.log('GlobalCanvas rendering')
 
   return (
     <div className="fixed inset-0 z-0 bg-[#F2F1EC]">
