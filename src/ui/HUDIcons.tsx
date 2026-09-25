@@ -93,7 +93,7 @@ export default function HUDIcons() {
     await new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(r)))
 
     try {
-      const webglCanvas = document.querySelector('canvas')
+      const webglCanvas = document.querySelector<HTMLCanvasElement>('canvas:not([data-minimap])')
       if (webglCanvas) {
         // Create 2x resolution offscreen canvas
         const offscreen = document.createElement('canvas')

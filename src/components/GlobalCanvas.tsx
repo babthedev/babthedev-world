@@ -9,7 +9,7 @@ import InteractHint from '@/ui/InteractHint'
 import HUDIcons from '@/ui/HUDIcons'
 import DistrictLabel from '@/ui/DistrictLabel'
 import ReadingPanel from '@/ui/ReadingPanel'
-import SphereCompass from '@/ui/SphereCompass'
+import Minimap from '@/ui/Minimap'
 import DebugOverlay from '@/ui/DebugOverlay'
 import InkIrisTransition from '@/ui/InkIrisTransition'
 import ContactModal from '@/ui/ContactModal'
@@ -66,7 +66,7 @@ export default function GlobalCanvas() {
       <PassportStampToast />
       <ColophonModal />
       <IntroDialogue />
-      <SphereCompass />
+      <Minimap />
       <DebugOverlay />
       <InkIrisTransition />
       <LoadingScreen />

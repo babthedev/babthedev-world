@@ -26,7 +26,7 @@ test.describe('BabWorld 3D Visual Integrity', () => {
     await page.goto('/')
 
     // Wait for the WebGL canvas to mount
-    const canvas = page.locator('canvas')
+    const canvas = page.locator('canvas:not([data-minimap])')
     await expect(canvas).toBeVisible({ timeout: 15000 })
 
     // Verify HUD icons are visible
@@ -51,7 +51,7 @@ test.describe('BabWorld 3D Visual Integrity', () => {
     test.setTimeout(180_000) // the physics body (and so the spawn) mounts late in software-rendered headless Chrome
     await page.goto('/essays')
 
-    const canvas = page.locator('canvas')
+    const canvas = page.locator('canvas:not([data-minimap])')
     await expect(canvas).toBeVisible({ timeout: 15000 })
 
     // Verify district label shows The Library
@@ -83,7 +83,7 @@ test.describe('BabWorld 3D Visual Integrity', () => {
 
   test('district title card is announced and stays out of the compass', async ({ page }) => {
     await page.goto('/')
-    await expect(page.locator('canvas')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('canvas:not([data-minimap])')).toBeVisible({ timeout: 15000 })
     const title = page.locator('#district-label')
     await expect(title).toHaveAttribute('role', 'status')
     await expect(title).toContainText('District:') // screen-reader text is always present
@@ -94,7 +94,7 @@ test.describe('BabWorld 3D Visual Integrity', () => {
     page.on('console', (m) => m.type() === 'error' && errors.push(m.text()))
     page.on('pageerror', (e) => errors.push(e.message))
     await page.goto('/?quality=low')
-    await expect(page.locator('canvas')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('canvas:not([data-minimap])')).toBeVisible({ timeout: 15000 })
     await page.waitForTimeout(3000)
     expect(errors.filter((e) => /shader|SHADER|WebGL|Cannot read properties/.test(e))).toHaveLength(0)
   })
@@ -137,6 +137,39 @@ test.describe('Visitor movement', () => {
     const r = await page.evaluate(() => Math.hypot(...((window as unknown as DevWindow).__VISITOR__().pos as number[])))
     expect(r).toBeGreaterThan(25.9) // resting on the sphere (R 25 + capsule),
     expect(r).toBeLessThan(26.2) //    not on a collider poking out of it
+  })
+
+  test('the minimap draws the streets around the visitor and turns with the heading', async ({ page }) => {
+    await ready(page)
+    const minimap = page.locator('canvas[data-minimap]')
+    await expect(minimap).toBeVisible()
+    // Sample the minimap into a coarse greyscale grid
+    const sample = () =>
+      minimap.evaluate((el) => {
+        const c = el as HTMLCanvasElement
+        const g = document.createElement('canvas')
+        g.width = g.height = 16
+        const ctx = g.getContext('2d')!
+        ctx.drawImage(c, 0, 0, 16, 16)
+        const px = ctx.getImageData(0, 0, 16, 16).data
+        const out: number[] = []
+        for (let i = 0; i < px.length; i += 4) out.push((px[i] + px[i + 1] + px[i + 2]) / 3)
+        return out
+      })
+    // Stand on the east street looking along it
+    await page.evaluate(() => (window as unknown as DevWindow).__TELEPORT__(20, 0, 30, 0))
+    await page.waitForTimeout(2500)
+    const before = await sample()
+    const dark = before.filter((v) => v < 70).length
+    const light = before.filter((v) => v > 200).length
+    expect(dark, 'building blocks are drawn dark').toBeGreaterThan(8)
+    expect(light, 'streets are drawn light').toBeGreaterThan(8)
+    // Turn to look the other way: the map must rotate with the heading
+    await page.evaluate(() => (window as unknown as DevWindow).__TELEPORT__(20, 0, 10, 0))
+    await page.waitForTimeout(2500)
+    const after = await sample()
+    const changed = before.filter((v, i) => Math.abs(v - after[i]) > 60).length
+    expect(changed, 'the map turned with the heading').toBeGreaterThan(20)
   })
 
   test('D strafes to the right of W and the model faces its travel direction', async ({ page }) => {

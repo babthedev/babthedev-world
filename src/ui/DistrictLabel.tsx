@@ -21,7 +21,7 @@ export default function DistrictLabel() {
       id="district-label"
       role="status"
       aria-live="polite"
-      className={`fixed bottom-20 left-4 z-30 pointer-events-none select-none md:bottom-24 md:left-8
+      className={`fixed bottom-40 left-4 z-30 pointer-events-none select-none md:bottom-[13.5rem] md:left-6
         transition-all duration-500 ease-out motion-reduce:transition-none ${
           visible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
         }`}

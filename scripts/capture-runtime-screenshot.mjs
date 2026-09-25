@@ -81,7 +81,7 @@ async function run() {
       isTourActive: window.__WORLD_STORE__.getState().isTourActive,
     } : null
 
-    const canvas = document.querySelector('canvas')
+    const canvas = document.querySelector('canvas:not([data-minimap])')
     if (!canvas) return { error: 'No canvas found', storeState }
     const gl = canvas.getContext('webgl2') || canvas.getContext('webgl')
     const canvasKeys = Object.keys(canvas)
