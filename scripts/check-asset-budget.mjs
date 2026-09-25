@@ -14,6 +14,7 @@ import { join, relative } from 'node:path'
 
 const PUBLIC_DIR = join(process.cwd(), 'public')
 const BUDGET_BYTES = 12 * 1024 * 1024  // 12MB hard cap
+const VRM_BUDGET_BYTES = 12 * 1024 * 1024  // all character models together (run `pnpm assets:vrm` to slim them)
 const EXCLUDE_DIRS = new Set(['reference'])  // dev-only assets
 
 function walkDir(dir) {
@@ -64,9 +65,15 @@ for (const f of top) {
 
 console.log()
 console.log(`  Core World Assets:   ${formatBytes(coreBytes)} / ${formatBytes(BUDGET_BYTES)} (${((coreBytes / BUDGET_BYTES) * 100).toFixed(1)}%)`)
-console.log(`  VRM Character Packs: ${formatBytes(vrmBytes)} (cached via ServiceWorker / HTTP immutable)`)
+console.log(`  VRM Character Packs: ${formatBytes(vrmBytes)} / ${formatBytes(VRM_BUDGET_BYTES)} (${((vrmBytes / VRM_BUDGET_BYTES) * 100).toFixed(1)}%, cached via ServiceWorker / HTTP immutable)`)
 console.log(`  Total Public Assets: ${formatBytes(totalBytes)}`)
 console.log()
+
+if (vrmBytes > VRM_BUDGET_BYTES) {
+  console.error(`  ✗ CHARACTER MODELS OVER BUDGET by ${formatBytes(vrmBytes - VRM_BUDGET_BYTES)}`)
+  console.error("  Run 'pnpm assets:vrm' (textures, morph targets, meshopt) before adding heavier models.")
+  process.exit(1)
+}
 
 if (coreBytes > BUDGET_BYTES) {
   const over = coreBytes - BUDGET_BYTES

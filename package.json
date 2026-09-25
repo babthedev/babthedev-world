@@ -16,10 +16,12 @@
     "assets:optimize": "node scripts/optimize-assets.mjs",
     "assets:budget": "node scripts/check-asset-budget.mjs",
     "verify:dod": "node scripts/verify-dod.mjs",
-    "capture:poses": "node scripts/capture-poses.mjs"
+    "capture:poses": "node scripts/capture-poses.mjs",
+    "assets:vrm": "node scripts/optimize-vrm.mjs"
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.4",
+    "@pixiv/three-vrm-animation": "^3.5.5",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@react-three/postprocessing": "^3.0.4",
@@ -45,6 +47,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "meshoptimizer": "^1.2.0",
+    "sharp": "^0.35.4",
     "tailwindcss": "^4",
     "tsx": "^4.23.13",
     "typescript": "^5"

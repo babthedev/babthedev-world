@@ -3,11 +3,15 @@
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
 import { useGLTF, useAnimations } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { VRMLoaderPlugin, VRMUtils } from '@pixiv/three-vrm'
+import { VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm'
+import { useVrmaPlayer } from '@/hooks/useVrmaPlayer'
+import type { AnimationState } from '@/hooks/useCharacterAnimations'
 import {
+  Euler,
   Group,
   Mesh,
   MeshToonMaterial,
+  MeshToonMaterialParameters,
   Texture,
   SkinnedMesh,
   Vector3,
@@ -35,6 +39,8 @@ const _headWorldPos = new Vector3()
 const _lookDirWorld = new Vector3()
 const _lookDirLocal = new Vector3()
 const _groupWorldQuat = new Quaternion()
+const _lookEuler = new Euler()
+const _lookQuat = new Quaternion()
 
 const CharacterModel = forwardRef<Group, CharacterModelProps>(
   (
@@ -107,15 +113,18 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
         if (m.isOutline) {
           m.outlineColorFactor?.set?.('#0B0B0B')
         } else if (!(m instanceof MeshToonMaterial)) {
-          next = new MeshToonMaterial({
+          // Only forward properties the source actually defines — three warns
+          // ("parameter 'side' has value of undefined") on explicit undefineds.
+          const params: MeshToonMaterialParameters = {
             map: m.map ?? null,
             color: m.map ? (m.color ?? '#FFFFFF') : (m.color ?? color),
             gradientMap,
-            transparent: m.transparent,
-            alphaTest: m.alphaTest,
-            side: m.side,
-            depthWrite: m.depthWrite,
-          })
+          }
+          if (m.transparent !== undefined) params.transparent = m.transparent
+          if (m.alphaTest !== undefined) params.alphaTest = m.alphaTest
+          if (m.side !== undefined) params.side = m.side
+          if (m.depthWrite !== undefined) params.depthWrite = m.depthWrite
+          next = new MeshToonMaterial(params)
           // Free every texture the new material doesn't reuse
           for (const value of Object.values(m)) {
             if (value instanceof Texture && value !== m.map) value.dispose()
@@ -139,6 +148,11 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
         }
       })
     }, [scene, vrm, color, gradientMap])
+
+    // ── VRMA CLIPS (public/animations/*.vrma, see docs/ANIMATIONS.md) ──
+    // Owns the pose for any state that has a clip; other states fall through
+    // to the procedural animation below.
+    const vrma = useVrmaPlayer(vrm as VRM | null)
 
     // ── ANIMATION PLAYBACK (IF EMBEDDED CLIPS EXIST) ──
     useEffect(() => {
@@ -195,8 +209,15 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
       const isSeated = animationName === 'sit'
       const isIdle = !isWalking && !isSeated
 
+      // A VRMA clip (when one exists for this state) owns the pose; the procedural
+      // blocks below only run for states without a clip.
+      const clipDriven = vrma.update(dt, animationName as AnimationState)
+      const proceduralWalk = !clipDriven && isWalking
+      const proceduralSit = !clipDriven && isSeated
+      const proceduralIdle = !clipDriven && isIdle
+
       // ── 1. LOCOMOTION CYCLE ───────────────────────────
-      if (isWalking) {
+      if (proceduralWalk) {
         walkCycleTimeRef.current += dt * 7.5
         idleTimeRef.current = 0
         activeSecondaryRef.current = null
@@ -224,9 +245,31 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
         if (bones.leftLowerArm) bones.leftLowerArm.rotation.x = 0.3
         if (bones.rightLowerArm) bones.rightLowerArm.rotation.x = 0.3
 
-        if (bones.hips) bones.hips.position.y = Math.abs(Math.sin(t)) * 0.035
-        if (bones.spine) bones.spine.rotation.y = Math.sin(t) * 0.04
-      } else if (isSeated) {
+        // ── WEIGHT TRANSFER ──
+        // Character faces +Z with its left at +X. Positive rotation.x swings a leg
+        // BACKWARD, so the left foot is forward when sin(t) < 0, and it is the
+        // stance foot (moving back under the body) while cos(t) > 0. Legs pass
+        // under the body at sin(t) = 0. Signs verified against measured bone
+        // positions of a live walk, not derived on paper.
+        const sway = Math.sin(t)
+        const pass = Math.cos(t)
+        if (bones.hips) {
+          // Body is highest as the legs pass (sin = 0) and lowest at full stride (double support)
+          bones.hips.position.y = Math.abs(pass) * 0.035
+          // Pelvis shifts over the stance foot (left stance → +X)
+          bones.hips.position.x = pass * 0.018
+          // Roll: the swing side drops (left stance → left hip higher → +Z roll)
+          bones.hips.rotation.z = pass * 0.03
+          // Yaw: the leading hip comes forward (left foot forward when sin < 0)
+          bones.hips.rotation.y = sway * 0.09
+        }
+        // Shoulders counter-rotate against the pelvis, in step with the arm swing
+        if (bones.spine) {
+          bones.spine.rotation.y = -sway * 0.05
+          bones.spine.rotation.x = MathUtils.damp(bones.spine.rotation.x, 0.05, 6, dt) // slight forward lean
+        }
+        if (bones.chest) bones.chest.rotation.y = -sway * 0.05
+      } else if (proceduralSit) {
         // Seated pose for Joe and ambient cafe/library NPCs
         idleTimeRef.current = 0
         activeSecondaryRef.current = null
@@ -247,7 +290,7 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
         if (bones.leftLowerArm) bones.leftLowerArm.rotation.x = 1.25
         if (bones.rightLowerArm) bones.rightLowerArm.rotation.x = 1.25
         if (bones.spine) bones.spine.rotation.x = 0.08
-      } else {
+      } else if (!clipDriven) {
         // Return legs and hips to neutral standing pose
         if (bones.leftUpperLeg)
           bones.leftUpperLeg.rotation.x = MathUtils.damp(bones.leftUpperLeg.rotation.x, 0, 10, dt)
@@ -257,17 +300,23 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
           bones.leftLowerLeg.rotation.x = MathUtils.damp(bones.leftLowerLeg.rotation.x, 0, 10, dt)
         if (bones.rightLowerLeg)
           bones.rightLowerLeg.rotation.x = MathUtils.damp(bones.rightLowerLeg.rotation.x, 0, 10, dt)
-        if (bones.hips)
+        if (bones.hips) {
           bones.hips.position.y = MathUtils.damp(bones.hips.position.y, 0, 10, dt)
+          bones.hips.position.x = MathUtils.damp(bones.hips.position.x, 0, 10, dt)
+          bones.hips.rotation.y = MathUtils.damp(bones.hips.rotation.y, 0, 10, dt)
+          bones.hips.rotation.z = MathUtils.damp(bones.hips.rotation.z, 0, 10, dt)
+        }
+        if (bones.spine) bones.spine.rotation.y = MathUtils.damp(bones.spine.rotation.y, 0, 10, dt)
+        if (bones.chest) bones.chest.rotation.y = MathUtils.damp(bones.chest.rotation.y, 0, 10, dt)
       }
 
       // ── 2. BASE IDLE BREATHING SWAY ────────────────────
-      if (isIdle) {
+      if (proceduralIdle) {
         idleTimeRef.current += dt
         const breath = Math.sin(idleTimeRef.current * 1.8)
 
         if (bones.chest) bones.chest.rotation.x = breath * 0.02
-        if (bones.spine) bones.spine.rotation.x = breath * 0.012
+        if (bones.spine) bones.spine.rotation.x = MathUtils.damp(bones.spine.rotation.x, breath * 0.012, 8, dt)
 
         // Default neutral arms hanging relaxed at the sides (VRM upper arms point horizontal at 0, so rotate ~1.25 rad down)
         if (!activeSecondaryRef.current) {
@@ -294,7 +343,7 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
       // Cycle 2 randomized idles per character:
       // Abdulrahman: checks watch / looks at cranes
       // Visitor: stretches / looks around at street architecture
-      if (isIdle && idleTimeRef.current > 8.0) {
+      if (proceduralIdle && idleTimeRef.current > 8.0) {
         if (!activeSecondaryRef.current && idleTimeRef.current >= nextIdleTriggerRef.current) {
           // Trigger a new secondary idle
           const isA = Math.random() > 0.5
@@ -428,11 +477,22 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
 
       if (bones.head && (lookAtTarget || Math.abs(currentHeadYawRef.current) > 0.001)) {
         // Distribute 70% to head, 30% to neck for natural anatomical motion
-        bones.head.rotation.y = currentHeadYawRef.current * 0.7
-        bones.head.rotation.x = currentHeadPitchRef.current * 0.7
-        if (bones.neck) {
-          bones.neck.rotation.y = currentHeadYawRef.current * 0.3
-          bones.neck.rotation.x = currentHeadPitchRef.current * 0.3
+        if (clipDriven) {
+          // Additive: the clip already wrote head/neck this frame, so layer the
+          // look-at on top of it instead of overwriting it.
+          _lookQuat.setFromEuler(_lookEuler.set(currentHeadPitchRef.current * 0.7, currentHeadYawRef.current * 0.7, 0))
+          bones.head.quaternion.premultiply(_lookQuat)
+          if (bones.neck) {
+            _lookQuat.setFromEuler(_lookEuler.set(currentHeadPitchRef.current * 0.3, currentHeadYawRef.current * 0.3, 0))
+            bones.neck.quaternion.premultiply(_lookQuat)
+          }
+        } else {
+          bones.head.rotation.y = currentHeadYawRef.current * 0.7
+          bones.head.rotation.x = currentHeadPitchRef.current * 0.7
+          if (bones.neck) {
+            bones.neck.rotation.y = currentHeadYawRef.current * 0.3
+            bones.neck.rotation.x = currentHeadPitchRef.current * 0.3
+          }
         }
       }
 
