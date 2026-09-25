@@ -21,6 +21,12 @@ import { getSurfaceNormal, getTangentBasis, settleFacing } from '@/lib/sphereMat
 import { cameraRig } from '@/lib/cameraRig'
 import { greeting } from '@/lib/greeting'
 
+// Opening two-shot: a level, close camera on the pair. The look point sits below the
+// pair so they land above the intro dialogue panel instead of behind it.
+const GREET_DIST = 3.4
+const GREET_CAM_HEIGHT = 0.9
+const GREET_LOOK_HEIGHT = 0.2
+
 // Pre-allocated vectors — avoids GC pressure inside useFrame
 const _desired = new Vector3()
 const _lookAt = new Vector3()
@@ -32,9 +38,11 @@ const _panShift = new Vector3()
 const _camRayDir = new Vector3()
 const _facingTarget = new Vector3()
 const _facingCross = new Vector3()
+const _greetSep = new Vector3()
 
 export default function CameraController() {
   const visitorPos = useWorldStore((state) => state.position)
+  const guidePos = useWorldStore((state) => state.abdulrahmanPosition)
   const facingDir = useWorldStore((state) => state.facingDir)
   const isReading = useWorldStore((state) => state.isReading)
   const currentDialogue = useWorldStore((state) => state.currentDialogue)
@@ -115,7 +123,20 @@ export default function CameraController() {
     // Opening handshake: move in for a two-shot and aim low, so the pair sits above
     // the intro dialogue panel instead of behind it
     greetBlend.current = MathUtils.lerp(greetBlend.current, greeting.active ? 1 : 0, Math.min(1, 3 * dt))
-    const targetDist = (CAMERA_BACK - dialogueGlide.current * CAMERA_DIALOGUE_PULL) * (1 - 0.3 * greetBlend.current)
+    const g = greetBlend.current
+    // Centre the shot between the two characters rather than on the visitor
+    let cx = vx, cy = vy, cz = vz
+    if (g > 0.001) {
+      _greetSep.set(guidePos[0] - vx, guidePos[1] - vy, guidePos[2] - vz)
+      _greetSep.addScaledVector(_normal, -_greetSep.dot(_normal))
+      cx += _greetSep.x * 0.5 * g
+      cy += _greetSep.y * 0.5 * g
+      cz += _greetSep.z * 0.5 * g
+    }
+    const followDist = CAMERA_BACK - dialogueGlide.current * CAMERA_DIALOGUE_PULL
+    const targetDist = MathUtils.lerp(followDist, GREET_DIST, g)
+    const camHeight = MathUtils.lerp(CAMERA_HEIGHT, GREET_CAM_HEIGHT, g)
+    const lookHeight = MathUtils.lerp(CAMERA_LOOK_HEIGHT, GREET_LOOK_HEIGHT, g)
     const dialogueAngleOffset = dialogueGlide.current * 0.35
     const a = smoothedAngle + dialogueAngleOffset
 
@@ -145,9 +166,9 @@ export default function CameraController() {
 
     // Camera position: behind + height + pitch + impulse, aimed low and
     // close (Messenger framing) rather than the old high, distant chase cam
-    _desired.set(vx, vy, vz)
+    _desired.set(cx, cy, cz)
       .addScaledVector(_behindDir, targetDist * pitchFlatten)
-      .addScaledVector(_normal, CAMERA_HEIGHT + arrivalElevation.current + pitchElevation + impulseOffset.current)
+      .addScaledVector(_normal, camHeight + arrivalElevation.current + pitchElevation + impulseOffset.current)
       .add(_panShift)
 
     // Look past the visitor at roughly chest height so the horizon drops and
@@ -155,10 +176,9 @@ export default function CameraController() {
     // visitor (-_behindDir), not along the global tangent forward: forward
     // movement is camera-relative, so any yaw error here makes the visitor
     // drift off its facing and spiral.
-    _lookAt.set(vx, vy, vz)
-      .addScaledVector(_normal, CAMERA_LOOK_HEIGHT)
-      .addScaledVector(_behindDir, -CAMERA_LOOK_AHEAD * (1 - dialogueGlide.current * 0.6))
-      .addScaledVector(_normal, -0.85 * greetBlend.current)
+    _lookAt.set(cx, cy, cz)
+      .addScaledVector(_normal, lookHeight)
+      .addScaledVector(_behindDir, -CAMERA_LOOK_AHEAD * (1 - dialogueGlide.current * 0.6) * (1 - g))
 
     // ── Q141: SPRING-ARM OCCLUSION RAYCAST ──────────────
     // Pulls camera forward 0.3m off blocking walls to avoid clipping

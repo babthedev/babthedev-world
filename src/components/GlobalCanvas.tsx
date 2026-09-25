@@ -4,6 +4,7 @@ import { Suspense } from 'react'
 import { KeyboardControls } from '@react-three/drei'
 import Scene from '@/components/canvas/Scene'
 import IntroDialogue from '@/ui/IntroDialogue'
+import LoadingScreen from '@/ui/LoadingScreen'
 import InteractHint from '@/ui/InteractHint'
 import HUDIcons from '@/ui/HUDIcons'
 import DistrictLabel from '@/ui/DistrictLabel'
@@ -69,6 +70,7 @@ export default function GlobalCanvas() {
       <SphereCompass />
       <DebugOverlay />
       <InkIrisTransition />
+      <LoadingScreen />
     </div>
   )
 }

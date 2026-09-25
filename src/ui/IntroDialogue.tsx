@@ -28,9 +28,12 @@ export default function IntroDialogue() {
   const isLastLine = lineIndex === INTRO_SEQUENCE.length - 1
 
   // ── Q137: TYPEWRITER CHIRPS FOR INTRO ────────────────────
+  // Held back until both characters are on screen: the first frame the visitor sees
+  // should be the two of them, not an empty world under a speech panel.
   useEffect(() => {
     setDisplayedText('')
     indexRef.current = 0
+    if (!charactersReady) return
     const text = currentLine.text
 
     const interval = setInterval(() => {
@@ -48,7 +51,7 @@ export default function IntroDialogue() {
     }, 40)
 
     return () => clearInterval(interval)
-  }, [lineIndex, currentLine.text, playDialogueBlip])
+  }, [lineIndex, currentLine.text, charactersReady, playDialogueBlip])
 
   const finishIntro = useCallback(() => {
     setVisible(false)
@@ -60,13 +63,14 @@ export default function IntroDialogue() {
   }, [setIntroComplete, setTourActive, trackEvent])
 
   const advance = useCallback(() => {
+    if (!charactersReady) return
     playTypewriterTap()
     if (isLastLine) {
       finishIntro()
     } else {
       setLineIndex((i) => i + 1)
     }
-  }, [isLastLine, finishIntro, playTypewriterTap])
+  }, [isLastLine, charactersReady, finishIntro, playTypewriterTap])
 
   // ── AUTO-DISMISS AFTER 7 SECONDS ────────────────────────
   // Per spec: visitor can click through manually, OR it
@@ -105,9 +109,9 @@ export default function IntroDialogue() {
   return (
     <div
       className={`fixed inset-0 z-30 flex items-end justify-center pb-12 px-6 transition-opacity duration-400 ${
-        visible ? 'opacity-100' : 'opacity-0'
+        visible && charactersReady ? 'opacity-100' : 'opacity-0'
       }`}
-      style={{ pointerEvents: visible ? 'auto' : 'none' }}
+      style={{ pointerEvents: visible && charactersReady ? 'auto' : 'none' }}
     >
       <div className="w-full max-w-2xl">
         {/* Name badge — brutalist style */}
