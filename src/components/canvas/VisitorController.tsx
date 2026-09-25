@@ -17,6 +17,7 @@ import {
   VISITOR_BOOST_SPEED,
   CAMERA_FOLLOW_IDLE,
   CAMERA_FOLLOW_MOVING,
+  CAMERA_FOLLOW_TOUR,
   TETHER_DISTANCE,
   LINEAR_DAMPING,
   VISITOR_COLOR,
@@ -281,12 +282,15 @@ export default function VisitorController() {
     // Idle: gently orbit toward the facing. Moving: follow only the FORWARD part
     // of the input, slowly, so W+D steers in an arc while pure strafe / back
     // go straight instead of circling.
+    // On the guided tour the visitor is steered by the tour, not the camera, so there is
+    // no feedback to fear: keep the camera close behind. A slow follow lets the visitor
+    // swing out of frame when they turn to follow the guide, badly so in narrow portrait.
     if (greeting.active) {
       cameraRig.followRate = 0 // the director frames the pair
+    } else if (isTourActive) {
+      cameraRig.followRate = CAMERA_FOLLOW_TOUR
     } else if (_direction.lengthSq() < 1e-6) {
       cameraRig.followRate = CAMERA_FOLLOW_IDLE
-    } else if (isTourActive) {
-      cameraRig.followRate = CAMERA_FOLLOW_MOVING
     } else {
       const forwardPart = Math.max(0, _direction.dot(_forward)) / currentSpeed
       cameraRig.followRate = CAMERA_FOLLOW_MOVING * forwardPart

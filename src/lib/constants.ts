@@ -40,6 +40,7 @@ export const CAMERA_READING_PAN = 1.1
 // the input, slowly, so W+D steers in an arc but pure strafe / back go straight
 // (following those would make the visitor circle).
 export const CAMERA_FOLLOW_IDLE = 1.5    // 1/s
+export const CAMERA_FOLLOW_TOUR = 4.5    // 1/s, on the guided tour: the visitor steers themselves, so the camera can keep up
 export const CAMERA_FOLLOW_MOVING = 1.2  // 1/s, scaled by the forward component of the input
 export const CAMERA_LERP = 5
 export const CAMERA_NEAR = 0.1
