@@ -117,7 +117,8 @@ export default function VisitorController() {
   // flat-world coordinate facing toward another flat-world coordinate.
   useEffect(() => {
     if (process.env.NODE_ENV === 'production') return
-    ;(window as any).__TELEPORT__ = (x: number, z: number, lx: number, lz: number) => {
+    const dev = window as unknown as Record<string, unknown>
+    dev.__TELEPORT__ = (x: number, z: number, lx: number, lz: number) => {
       if (!bodyRef.current) return
       const spawn = mapSpawnToSphere([x, 0, z], CHARACTER_CAPSULE_HEIGHT)
       bodyRef.current.setTranslation({ x: spawn[0], y: spawn[1], z: spawn[2] }, true)
@@ -142,7 +143,7 @@ export default function VisitorController() {
         setFacingDir([look.x, look.y, look.z])
       }, 150)
     }
-    ;(window as any).__VISITOR__ = () => {
+    dev.__VISITOR__ = function visitorSnapshot() {
       const b = bodyRef.current
       if (!b) return null
       const t = b.translation()
@@ -155,10 +156,10 @@ export default function VisitorController() {
       return { pos: [t.x, t.y, t.z], vel: [v.x, v.y, v.z], sleeping: b.isSleeping(), mass: b.mass(), contacts, keys: get(), tour: useWorldStore.getState().isTourActive, reading: useWorldStore.getState().isReading }
     }
     return () => {
-      delete (window as any).__TELEPORT__
-      delete (window as any).__VISITOR__
+      delete dev.__TELEPORT__
+      delete dev.__VISITOR__
     }
-  }, [setPosition, setFacingDir, setTourActive])
+  }, [setPosition, setFacingDir, setTourActive, world, get])
 
   useFrame((state, delta) => {
     if (!bodyRef.current || !modelRef.current) return

@@ -5,6 +5,7 @@ import { useWorldStore } from '@/store/useWorldStore'
 import { INTRO_SEQUENCE } from '@/lib/dialogue'
 import { INTRO_AUTO_DISMISS_MS } from '@/lib/constants'
 import { useAudioManager } from '@/hooks/useAudioManager'
+import { useTypewriter } from '@/hooks/useTypewriter'
 import { useTelemetry } from '@/hooks/useTelemetry'
 
 const INTRO_AFTER_GREETING_MS = 1500
@@ -20,38 +21,24 @@ export default function IntroDialogue() {
 
   const [lineIndex, setLineIndex] = useState(0)
   const [visible, setVisible] = useState(true)
-  const [displayedText, setDisplayedText] = useState('')
-  const indexRef = useRef(0)
   const greetingSeen = useRef(false)
 
   const currentLine = INTRO_SEQUENCE[lineIndex]
   const isLastLine = lineIndex === INTRO_SEQUENCE.length - 1
 
-  // ── Q137: TYPEWRITER CHIRPS FOR INTRO ────────────────────
   // Held back until both characters are on screen: the first frame the visitor sees
   // should be the two of them, not an empty world under a speech panel.
-  useEffect(() => {
-    setDisplayedText('')
-    indexRef.current = 0
-    if (!charactersReady) return
-    const text = currentLine.text
-
-    const interval = setInterval(() => {
-      indexRef.current++
-      if (indexRef.current <= text.length) {
-        setDisplayedText(text.slice(0, indexRef.current))
-        const char = text[indexRef.current - 1]
-        if (char && char.trim()) {
-          const pitchOffset = ((indexRef.current % 4) - 1.5) * 0.15
-          playDialogueBlip(pitchOffset)
-        }
-      } else {
-        clearInterval(interval)
-      }
-    }, 40)
-
-    return () => clearInterval(interval)
-  }, [lineIndex, currentLine.text, charactersReady, playDialogueBlip])
+  const displayedText = useTypewriter(
+    currentLine.text,
+    40,
+    useCallback(
+      (index: number, char: string) => {
+        if (char.trim()) playDialogueBlip(((index % 4) - 1.5) * 0.15)
+      },
+      [playDialogueBlip]
+    ),
+    charactersReady
+  )
 
   const finishIntro = useCallback(() => {
     setVisible(false)

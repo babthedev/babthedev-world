@@ -8,8 +8,10 @@ import { useVrmaPlayer } from '@/hooks/useVrmaPlayer'
 import { GREETING_TIMELINE, greeting, solveRightArm } from '@/lib/greeting'
 import type { AnimationState } from '@/hooks/useCharacterAnimations'
 import {
+  Color,
   Euler,
   Group,
+  Material,
   Mesh,
   MeshToonMaterial,
   MeshToonMaterialParameters,
@@ -20,6 +22,25 @@ import {
   MathUtils,
   Object3D,
 } from 'three'
+
+/** The parts of a loaded VRM material this file reads; VRoid's MToon materials carry more than three's base type. */
+type LooseMaterial = Material & {
+  map?: Texture | null
+  color?: Color
+  alphaTest?: number
+  isOutline?: boolean
+  outlineColorFactor?: { set?: (color: string) => void }
+}
+
+type ExtendLoader = NonNullable<Parameters<typeof useGLTF.preload>[3]>
+
+type LoaderPlugin = ReturnType<Parameters<Parameters<ExtendLoader>[0]['register']>[0]>
+
+// drei loads through three-stdlib while three-vrm is typed against three's own copy of
+// the GLTF loader types. They are the same runtime objects, so bridge the two.
+const registerVRM: ExtendLoader = (loader) => {
+  loader.register((parser) => new VRMLoaderPlugin(parser as unknown as ConstructorParameters<typeof VRMLoaderPlugin>[0]) as unknown as LoaderPlugin)
+}
 
 interface CharacterModelProps {
   url: string
@@ -63,7 +84,7 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
     ref
   ) => {
     const internalRef = useRef<Group | null>(null)
-    const [vrm, setVrm] = useState<any>(null)
+    const [vrm, setVrm] = useState<VRM | null>(null)
     const isVRM = url.endsWith('.vrm')
 
     // Determine character identity
@@ -80,15 +101,13 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
       undefined,
       undefined,
       isVRM
-        ? (loader: any) => {
-            loader.register((parser: any) => new VRMLoaderPlugin(parser))
-          }
+        ? registerVRM
         : undefined
-    ) as any
+    )
 
     const scene = gltf.scene
     const animations = gltf.animations
-    const { actions, mixer: _mixer } = useAnimations(animations, scene)
+    const { actions } = useAnimations(animations, scene)
 
     // ── VRM INITIALIZATION ────────────────────────────
     useEffect(() => {
@@ -114,9 +133,10 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
       const targetScene = vrm ? vrm.scene : scene
       if (!targetScene) return
 
-      const converted = new Map<any, any>()
-      const convert = (m: any) => {
-        if (converted.has(m)) return converted.get(m)
+      const converted = new Map<Material, Material>()
+      const convert = (m: LooseMaterial): Material => {
+        const done = converted.get(m)
+        if (done) return done
         let next = m
         if (m.isOutline) {
           m.outlineColorFactor?.set?.('#0B0B0B')
@@ -143,7 +163,7 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
         return next
       }
 
-      targetScene.traverse((child: any) => {
+      targetScene.traverse((child) => {
         if (child instanceof Mesh || child instanceof SkinnedMesh) {
           child.material = Array.isArray(child.material)
             ? child.material.map(convert)
@@ -160,7 +180,7 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
     // ── VRMA CLIPS (public/animations/*.vrma, see docs/ANIMATIONS.md) ──
     // Owns the pose for any state that has a clip; other states fall through
     // to the procedural animation below.
-    const vrma = useVrmaPlayer(vrm as VRM | null)
+    const vrma = useVrmaPlayer(vrm)
 
     // ── ANIMATION PLAYBACK (IF EMBEDDED CLIPS EXIST) ──
     useEffect(() => {
@@ -565,9 +585,6 @@ CharacterModel.displayName = 'CharacterModel'
 export default CharacterModel
 
 // Preload characters at module load time
-const registerVRM = (loader: any) => {
-  loader.register((parser: any) => new VRMLoaderPlugin(parser))
-}
 useGLTF.preload('/abdulrahman.vrm', undefined, undefined, registerVRM)
 useGLTF.preload('/visitor.vrm', undefined, undefined, registerVRM)
 useGLTF.preload('/joe.vrm', undefined, undefined, registerVRM)

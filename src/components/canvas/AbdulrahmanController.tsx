@@ -8,7 +8,7 @@ import { useWorldStore } from '@/store/useWorldStore'
 import CharacterModel from './CharacterModel'
 import DialogueBubble from './DialogueBubble'
 import { useCharacterAnimations } from '@/hooks/useCharacterAnimations'
-import { TOUR_WAYPOINTS, calcDialogueDuration, SPECIAL_DIALOGUES } from '@/lib/dialogue'
+import { TOUR_WAYPOINTS, calcDialogueDuration } from '@/lib/dialogue'
 import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
 import {
   ABDULRAHMAN_SPEED,

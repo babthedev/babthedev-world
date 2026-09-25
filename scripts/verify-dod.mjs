@@ -13,7 +13,6 @@ import { join } from 'node:path'
 
 const ROOT = process.cwd()
 const SRC = join(ROOT, 'src')
-const PUBLIC = join(ROOT, 'public')
 
 let passed = 0
 let failed = 0

@@ -200,5 +200,5 @@ export const useWorldStore = create<WorldStore>((set) => ({
 }))
 
 if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-  ;(window as any).__WORLD_STORE__ = useWorldStore
+  ;(window as unknown as Record<string, unknown>).__WORLD_STORE__ = useWorldStore
 }

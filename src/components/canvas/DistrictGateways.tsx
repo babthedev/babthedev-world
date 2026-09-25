@@ -2,7 +2,7 @@
 
 import { useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
-import { Mesh, MeshToonMaterial, Texture } from 'three'
+import { MeshToonMaterial, Texture } from 'three'
 import { flatToSphere } from '@/lib/surfacePlacement'
 import { FEATURE_FLAGS } from '@/lib/featureFlags'
 import SignText from './SignText'
@@ -25,15 +25,6 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
     () =>
       new MeshToonMaterial({
         color: '#161616',
-        gradientMap,
-      }),
-    [gradientMap]
-  )
-
-  const barrierMaterial = useMemo(
-    () =>
-      new MeshToonMaterial({
-        color: '#D8D8D8',
         gradientMap,
       }),
     [gradientMap]

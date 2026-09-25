@@ -1,46 +1,28 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useCallback } from 'react'
 import { Html } from '@react-three/drei'
 import { useWorldStore } from '@/store/useWorldStore'
 import { useAudioManager } from '@/hooks/useAudioManager'
+import { useTypewriter } from '@/hooks/useTypewriter'
 
 export default function DialogueBubble() {
   const currentDialogue = useWorldStore((s) => s.currentDialogue)
   const greetingActive = useWorldStore((s) => s.greetingActive)
   const { playDialogueBlip } = useAudioManager()
 
-  const [displayedText, setDisplayedText] = useState('')
-  const indexRef = useRef(0)
-
   // ── Q137: TYPEWRITER TEXT STREAMING WITH 12Hz MARIMBA BLIPS ──
-  useEffect(() => {
-    if (!currentDialogue) {
-      setDisplayedText('')
-      indexRef.current = 0
-      return
-    }
-
-    setDisplayedText('')
-    indexRef.current = 0
-
-    const interval = setInterval(() => {
-      indexRef.current++
-      if (indexRef.current <= currentDialogue.length) {
-        setDisplayedText(currentDialogue.slice(0, indexRef.current))
-        const char = currentDialogue[indexRef.current - 1]
+  const displayedText = useTypewriter(
+    currentDialogue,
+    55,
+    useCallback(
+      (index: number, char: string) => {
         // Play warm acoustic blip for alphanumeric characters
-        if (char && char.trim()) {
-          const pitchOffset = ((indexRef.current % 5) - 2) * 0.15
-          playDialogueBlip(pitchOffset)
-        }
-      } else {
-        clearInterval(interval)
-      }
-    }, 55)
-
-    return () => clearInterval(interval)
-  }, [currentDialogue, playDialogueBlip])
+        if (char.trim()) playDialogueBlip(((index % 5) - 2) * 0.15)
+      },
+      [playDialogueBlip]
+    )
+  )
 
   // The opening handshake is framed as a two-shot; a speech bubble would only crowd it
   if (!currentDialogue || greetingActive) return null
