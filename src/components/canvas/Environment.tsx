@@ -53,6 +53,18 @@ const SPHERE_NPCS = mapToSphere(NPC_LOCATIONS.map(n => ({
   rotation: n.rotation ?? [0, 0, 0] as [number, number, number],
 })))
 
+// The Kenney props are modelled at toy scale (a cone is 9cm tall). These factors
+// bring them to plausible real sizes until authored props replace them
+// (docs/ASSET_SPEC.md §2).
+const PROP_SCALE: Record<string, number> = {
+  'construction-cone.glb': 6.5, //   0.09m → 0.6m
+  'construction-barrier.glb': 8.5, // 0.12m → 1.0m tall, 1.9m long
+  'construction-light.glb': 6.5, //   0.23m → 1.5m
+  'light-curved.glb': 7.5, //         0.67m → 5.0m streetlamp
+  'light-square.glb': 7.5, //         0.60m → 4.5m
+  'sign-highway.glb': 5, //           0.71m → 3.5m tall, 5m wide
+}
+
 // ── GENERIC KENNEY ASSET LOADER ─────────────────────────
 // Loads any GLB from /public/kenney/, strips its material,
 // applies shared toon shading. Used for roads, buildings, props.
@@ -152,7 +164,7 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
             model={prop.model}
             position={prop.position}
             rotation={prop.rotation}
-            scale={prop.scale ?? 1}
+            scale={(prop.scale ?? 1) * (PROP_SCALE[prop.model] ?? 1)}
             gradientMap={gradientMap}
             color={prop.interactive ? '#A3A3A3' : '#141414'}
           />

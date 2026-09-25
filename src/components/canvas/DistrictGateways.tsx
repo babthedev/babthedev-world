@@ -62,14 +62,14 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
           object={pillarGlb.scene.clone()}
           position={[-3.2, 0, 0]}
           rotation={[0, 0, 0]}
-          scale={[1.2, 1.4, 1.2]}
+          scale={[6, 8, 6]}
         />
         {/* Right pillar */}
         <primitive
           object={pillarGlb.scene.clone()}
           position={[3.2, 0, 0]}
           rotation={[0, Math.PI, 0]}
-          scale={[1.2, 1.4, 1.2]}
+          scale={[6, 8, 6]}
         />
 
         {/* Overhead Lintel Beam */}
@@ -106,13 +106,13 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
           object={pillarGlb.scene.clone()}
           position={[0, 0, -3.2]}
           rotation={[0, Math.PI / 2, 0]}
-          scale={[1.1, 1.3, 1.1]}
+          scale={[6, 8, 6]}
         />
         <primitive
           object={pillarGlb.scene.clone()}
           position={[0, 0, 3.2]}
           rotation={[0, -Math.PI / 2, 0]}
-          scale={[1.1, 1.3, 1.1]}
+          scale={[6, 8, 6]}
         />
 
         {/* Overhead Beam */}
@@ -142,17 +142,17 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
             <primitive
               object={barrierGlb.scene.clone()}
               position={[-2.2, 0, 0]}
-              scale={[1.2, 1.2, 1.2]}
+              scale={[9, 9, 9]}
             />
             <primitive
               object={barrierGlb.scene.clone()}
               position={[0, 0, 0]}
-              scale={[1.2, 1.2, 1.2]}
+              scale={[9, 9, 9]}
             />
             <primitive
               object={barrierGlb.scene.clone()}
               position={[2.2, 0, 0]}
-              scale={[1.2, 1.2, 1.2]}
+              scale={[9, 9, 9]}
             />
 
             {/* Danger Warning Signboard */}
