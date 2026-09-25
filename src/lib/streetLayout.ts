@@ -17,6 +17,7 @@
 import { Matrix4, Quaternion, Vector3 } from 'three'
 import { PLANET_RADIUS } from './constants'
 import { flatToSphere } from './surfacePlacement'
+import { TOWN_MODELS } from './townManifest'
 import {
   WORLD_COORDINATES,
   PROP_LOCATIONS,
@@ -221,7 +222,7 @@ function nearProtected(p: Vector3, radius: number): boolean {
 // ── BUILDINGS ───────────────────────────────────────────
 // Footprints measured from the Kenney GLB bounding boxes (unit scale).
 // [width (x), height (y), depth (z)]
-const MODEL_SIZE: Record<string, [number, number, number]> = {
+const KENNEY_SIZE: Record<string, [number, number, number]> = {
   'building-a.glb': [0.884, 1.293, 0.94],
   'building-b.glb': [0.97, 1.293, 0.94],
   'building-c.glb': [0.884, 0.893, 1.09],
@@ -264,7 +265,26 @@ const BACKDROP_MODELS = [
   'low-detail-building-wide-a.glb', 'low-detail-building-wide-b.glb',
 ] as const
 
+// ── BUILDING KIT SELECTION ──────────────────────────────
+// public/town/ modules (sizes read from the GLBs by scripts/build-town-manifest.mjs)
+// replace the Kenney set as soon as at least one frontage module exists. Town
+// modules are authored at real scale, so they are placed at x1; the Kenney
+// models were scaled up ~7x. With no town modules everything below reduces to
+// exactly what it was, including the random draws.
+const TOWN_ACTIVE = TOWN_MODELS.some((m) => m.kind === 'frontage')
+const townFiles = (kind: 'frontage' | 'tall' | 'backdrop') => TOWN_MODELS.filter((m) => m.kind === kind).map((m) => m.file)
+
+const MODEL_SIZE: Record<string, [number, number, number]> = TOWN_ACTIVE
+  ? Object.fromEntries(TOWN_MODELS.map((m) => [m.file, m.size]))
+  : KENNEY_SIZE
+const FRONTAGE_LIST: readonly string[] = TOWN_ACTIVE ? townFiles('frontage') : FRONTAGE_MODELS
+const TALL_LIST: readonly string[] = TOWN_ACTIVE ? (townFiles('tall').length ? townFiles('tall') : FRONTAGE_LIST) : TALL_MODELS
+const BACKDROP_LIST: readonly string[] = TOWN_ACTIVE ? (townFiles('backdrop').length ? townFiles('backdrop') : FRONTAGE_LIST) : BACKDROP_MODELS
+
 export const BUILDING_MODELS = Object.keys(MODEL_SIZE)
+
+/** URL of a building model: town modules live in /town, Kenney ones in /kenney. */
+export const modelUrl = (model: string) => (model.startsWith('town/') ? `/${model}` : `/kenney/${model}`)
 
 export interface BuildingInstance {
   model: string
@@ -350,8 +370,9 @@ for (const st of STREETS) {
     let s = rand() * 2
     while (s < st.length - 1) {
       const tall = rand() < 0.16
-      const model = tall ? pick(TALL_MODELS) : pick(FRONTAGE_MODELS)
-      const scale = tall ? 5.6 + rand() * 0.8 : 6.6 + rand() * 1.2
+      const model = tall ? pick(TALL_LIST) : pick(FRONTAGE_LIST)
+      const kenneyScale = tall ? 5.6 + rand() * 0.8 : 6.6 + rand() * 1.2 // drawn either way: keeps the random sequence identical
+      const scale = TOWN_ACTIVE ? 1 : kenneyScale
       const [bw, , bd] = MODEL_SIZE[model]
       const w = bw * scale
       const d = bd * scale
@@ -385,8 +406,9 @@ for (const st of STREETS) {
     const front = ref.addScaledVector(p, -ref.dot(p)).normalize()
     front.applyAxisAngle(p, rand() * Math.PI * 2)
     const backdrop = rand() < 0.5
-    const model = backdrop ? pick(BACKDROP_MODELS) : pick([...FRONTAGE_MODELS, ...TALL_MODELS])
-    const scale = backdrop ? 10 + rand() * 3 : 6.5 + rand()
+    const model = backdrop ? pick(BACKDROP_LIST) : pick([...FRONTAGE_LIST, ...TALL_LIST])
+    const kenneyScale = backdrop ? 10 + rand() * 3 : 6.5 + rand()
+    const scale = TOWN_ACTIVE ? 1 : kenneyScale
     tryPlaceBuilding(model, scale, p, front, null, FRONTAGE + 0.6)
   }
 }

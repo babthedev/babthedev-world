@@ -5,6 +5,10 @@ existing pipeline. Everything here is derived from how the code loads and lays
 out assets today, not from generic advice. Where a constraint is a *code*
 limitation rather than a hard rule, it says so, and the code can be changed.
 
+**Status:** the loading pipeline for the building kit is built and tested (see §1, *Delivery*).
+Drop valid files into `public/town/`, run `pnpm assets:town`, and they replace the Kenney
+buildings with no further code changes.
+
 Priority order (biggest visual return first):
 
 | # | Asset | Why it matters |
@@ -83,9 +87,27 @@ grilles, recessed doors, water tanks on roofs. Mix concrete, tile and plaster.
 
 ### Delivery
 
-Put files in `public/town/` (one folder, flat), named `bld-<storeys>-<width>m-<variant>.glb`,
-for example `bld-3-6m-a.glb`, `tall-24m-b.glb`, `back-10m-a.glb`. I will generate the
-size table from each file's bounding box, so you do not need to supply dimensions.
+Put files in `public/town/` (one folder, flat) and run **`pnpm assets:town`**.
+
+| Prefix | Kind | Example |
+|---|---|---|
+| `bld-` | Frontage: lines the streets | `bld-3-6m-a.glb` |
+| `tall-` | Skyline block | `tall-24m-b.glb` |
+| `back-` | Low backdrop, seen far away | `back-10m-a.glb` |
+
+The script reads each file's bounding box (so you never supply dimensions), writes
+`src/lib/townManifest.ts`, and **validates against this spec**. It warns when a module's
+origin isn't the footprint centre on the ground, when its size is outside the ranges above,
+when it has more than 3000 triangles or more than one mesh, or when a mesh node carries a
+transform. It rejects a file with an unrecognised prefix. Commit the regenerated manifest
+(CI fails if it is stale).
+
+As soon as one `bld-` module exists, the town uses the town kit **instead of** the Kenney
+models (missing `tall-` or `back-` modules fall back to the `bld-` set), at real scale x1.
+With no town files, the town is unchanged.
+
+Run it on the GLBs **before** `pnpm assets:optimize`: compressed (quantised) positions no
+longer carry real-world bounds.
 
 ---
 

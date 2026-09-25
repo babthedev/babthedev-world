@@ -40,6 +40,9 @@ jobs:
       - name: Enforce Asset Budget (world assets and character models)
         run: pnpm assets:budget
 
+      - name: Building-kit manifest is up to date
+        run: node scripts/build-town-manifest.mjs --check
+
       - name: TypeScript Typecheck
         run: pnpm exec tsc --noEmit
 

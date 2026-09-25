@@ -9,7 +9,7 @@
     "generate:rss": "tsx scripts/generate-rss.ts",
     "test": "tsx src/lib/__tests__/sphereMath.test.ts",
     "test:visual": "playwright test",
-    "pre-commit": "tsx scripts/validate-content.ts && tsx src/lib/__tests__/sphereMath.test.ts && tsc --noEmit",
+    "pre-commit": "tsx scripts/validate-content.ts && node scripts/build-town-manifest.mjs --check && tsx src/lib/__tests__/sphereMath.test.ts && tsc --noEmit",
     "build": "tsx scripts/validate-content.ts && tsx scripts/generate-rss.ts && next build",
     "start": "next start",
     "lint": "eslint",
@@ -17,7 +17,8 @@
     "assets:budget": "node scripts/check-asset-budget.mjs",
     "verify:dod": "node scripts/verify-dod.mjs",
     "capture:poses": "node scripts/capture-poses.mjs",
-    "assets:vrm": "node scripts/optimize-vrm.mjs"
+    "assets:vrm": "node scripts/optimize-vrm.mjs",
+    "assets:town": "node scripts/build-town-manifest.mjs"
   },
   "dependencies": {
     "@pixiv/three-vrm": "^3.5.4",

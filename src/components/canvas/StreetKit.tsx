@@ -41,6 +41,7 @@ import {
   TUFTS,
   WIRE_SEGMENTS,
   lift,
+  modelUrl,
 } from '@/lib/streetLayout'
 import { signTexture } from '@/lib/glyphs'
 import { INK_COLOR, PLANET_RADIUS } from '@/lib/constants'
@@ -164,7 +165,7 @@ function Instances({
 
 // ── BUILDINGS ──────────────────────────────────────────
 function Buildings({ gradientMap }: { gradientMap: Texture }) {
-  const gltfs = useGLTF(BUILDING_MODELS.map((m) => `/kenney/${m}`))
+  const gltfs = useGLTF(BUILDING_MODELS.map(modelUrl))
 
   const groups = useMemo(() => {
     let colormap: Texture | null = null
@@ -415,4 +416,4 @@ export default function StreetKit({ gradientMap }: { gradientMap: Texture }) {
   )
 }
 
-BUILDING_MODELS.forEach((m) => useGLTF.preload(`/kenney/${m}`))
+BUILDING_MODELS.forEach((m) => useGLTF.preload(modelUrl(m)))

@@ -249,6 +249,8 @@ check('Movement: facing is a world-space vector (no yaw-angle drift)',
 check('Q53: characters ghost through each other',
   fileContains('src/components/canvas/VisitorController.tsx', 'interactionGroups') &&
   fileContains('src/components/canvas/AbdulrahmanController.tsx', 'interactionGroups'))
+check('P6 pipeline: building kit loads from public/town via a generated manifest',
+  fileExists('scripts/build-town-manifest.mjs') && fileExists('src/lib/townManifest.ts') && fileContains('src/lib/streetLayout.ts', 'TOWN_ACTIVE'))
 check('Regression tests cover movement and the low tier',
   fileContains('tests/visual.spec.ts', 'Visitor movement') && fileContains('tests/visual.spec.ts', 'quality=low'))
 
