@@ -7,11 +7,14 @@ import { INTRO_AUTO_DISMISS_MS } from '@/lib/constants'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { useTelemetry } from '@/hooks/useTelemetry'
 
+const INTRO_AFTER_GREETING_MS = 1500
+
 export default function IntroDialogue() {
   const introComplete = useWorldStore((s) => s.introComplete)
   const setIntroComplete = useWorldStore((s) => s.setIntroComplete)
   const setTourActive = useWorldStore((s) => s.setTourActive)
   const charactersReady = useWorldStore((s) => s.charactersReady)
+  const greetingActive = useWorldStore((s) => s.greetingActive)
   const { playDialogueBlip, playTypewriterTap } = useAudioManager()
   const { trackEvent } = useTelemetry()
 
@@ -19,6 +22,7 @@ export default function IntroDialogue() {
   const [visible, setVisible] = useState(true)
   const [displayedText, setDisplayedText] = useState('')
   const indexRef = useRef(0)
+  const greetingSeen = useRef(false)
 
   const currentLine = INTRO_SEQUENCE[lineIndex]
   const isLastLine = lineIndex === INTRO_SEQUENCE.length - 1
@@ -72,9 +76,16 @@ export default function IntroDialogue() {
   // (and the opening handshake) would be over before anyone had appeared.
   useEffect(() => {
     if (introComplete || !charactersReady) return
-    const timer = setTimeout(finishIntro, INTRO_AUTO_DISMISS_MS)
+    // The handshake advances on frame time, so on a slow machine it can outlast this
+    // wall-clock timer: hold the intro until it has finished, then give the last line
+    // a moment before closing.
+    if (greetingActive) {
+      greetingSeen.current = true
+      return
+    }
+    const timer = setTimeout(finishIntro, greetingSeen.current ? INTRO_AFTER_GREETING_MS : INTRO_AUTO_DISMISS_MS)
     return () => clearTimeout(timer)
-  }, [introComplete, charactersReady, finishIntro])
+  }, [introComplete, charactersReady, greetingActive, finishIntro])
 
   // ── SPACE / ENTER TO ADVANCE ────────────────────────────
   useEffect(() => {

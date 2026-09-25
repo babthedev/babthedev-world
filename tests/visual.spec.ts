@@ -63,7 +63,8 @@ test.describe('BabWorld 3D Visual Integrity', () => {
   test('opens in-world contact letter modal', async ({ page }) => {
     // The intro overlay blocks the HUD until the characters have loaded and it has run
     // its course, which takes a while under parallel software-rendered load.
-    test.setTimeout(120_000)
+    // (it now also waits out the opening handshake)
+    test.setTimeout(240_000)
     await page.goto('/')
 
     const contactButton = page.locator('button[aria-label="Send letter / Contact Abdulrahman"]')
