@@ -1,98 +1,53 @@
-import { useRef, useCallback, useEffect, useState } from 'react'
+import { useEffect } from 'react'
 
-interface TouchState {
-  active: boolean
-  startX: number
-  startY: number
-  deltaX: number
-  deltaY: number
-}
+const DRAG_THRESHOLD = 12 // px before a touch counts as a drag rather than a tap
+const TAP_MAX_DURATION = 250 // ms
 
-const DRAG_THRESHOLD = 12 // px before it counts as movement vs a tap
-const TAP_MAX_DURATION = 200 // ms
-
-export function useMobileControls(onTap?: () => void) {
-  const [isMobile, setIsMobile] = useState(false)
-  const touchState = useRef<TouchState>({
-    active: false,
-    startX: 0,
-    startY: 0,
-    deltaX: 0,
-    deltaY: 0,
-  })
-  const touchStartTime = useRef(0)
-
+/**
+ * A quick tap on the WORLD is Interact, the same as pressing E. Movement is the
+ * virtual joystick's job (see ui/VirtualJoystick), and taps that land on any
+ * button, the joystick or the minimap are theirs, not the world's.
+ *
+ * Tracks one finger by identifier, so a thumb held on the joystick never
+ * confuses a tap made with the other hand.
+ */
+export function useTapToInteract(onTap: () => void) {
   useEffect(() => {
-    setIsMobile(
-      typeof window !== 'undefined' &&
-        ('ontouchstart' in window || navigator.maxTouchPoints > 0)
-    )
-  }, [])
+    let id = -1
+    let startX = 0
+    let startY = 0
+    let startTime = 0
+    let onWorld = false
 
-  const handleTouchStart = useCallback((e: TouchEvent) => {
-    const touch = e.touches[0]
-    touchState.current = {
-      active: true,
-      startX: touch.clientX,
-      startY: touch.clientY,
-      deltaX: 0,
-      deltaY: 0,
+    const onStart = (e: TouchEvent) => {
+      if (id !== -1) return
+      const t = e.changedTouches[0]
+      id = t.identifier
+      startX = t.clientX
+      startY = t.clientY
+      startTime = performance.now()
+      onWorld = !!(e.target as Element | null)?.closest?.('canvas:not([data-minimap])')
     }
-    touchStartTime.current = Date.now()
-  }, [])
-
-  const handleTouchMove = useCallback((e: TouchEvent) => {
-    if (!touchState.current.active) return
-    const touch = e.touches[0]
-    touchState.current.deltaX = touch.clientX - touchState.current.startX
-    touchState.current.deltaY = touch.clientY - touchState.current.startY
-  }, [])
-
-  const handleTouchEnd = useCallback(() => {
-    const duration = Date.now() - touchStartTime.current
-    const { deltaX, deltaY } = touchState.current
-    const dragDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-
-    // Tap: short duration, minimal drag → treated as Interact
-    if (duration < TAP_MAX_DURATION && dragDistance < DRAG_THRESHOLD) {
-      onTap?.()
+    const onEnd = (e: TouchEvent) => {
+      for (const t of Array.from(e.changedTouches)) {
+        if (t.identifier !== id) continue
+        id = -1
+        const quick = performance.now() - startTime < TAP_MAX_DURATION
+        const still = Math.hypot(t.clientX - startX, t.clientY - startY) < DRAG_THRESHOLD
+        if (onWorld && quick && still) onTap()
+      }
+    }
+    const onCancel = () => {
+      id = -1
     }
 
-    touchState.current = {
-      active: false,
-      startX: 0,
-      startY: 0,
-      deltaX: 0,
-      deltaY: 0,
+    window.addEventListener('touchstart', onStart, { passive: true })
+    window.addEventListener('touchend', onEnd)
+    window.addEventListener('touchcancel', onCancel)
+    return () => {
+      window.removeEventListener('touchstart', onStart)
+      window.removeEventListener('touchend', onEnd)
+      window.removeEventListener('touchcancel', onCancel)
     }
   }, [onTap])
-
-  useEffect(() => {
-    if (!isMobile) return
-    window.addEventListener('touchstart', handleTouchStart, { passive: true })
-    window.addEventListener('touchmove', handleTouchMove, { passive: true })
-    window.addEventListener('touchend', handleTouchEnd)
-    return () => {
-      window.removeEventListener('touchstart', handleTouchStart)
-      window.removeEventListener('touchmove', handleTouchMove)
-      window.removeEventListener('touchend', handleTouchEnd)
-    }
-  }, [isMobile, handleTouchStart, handleTouchMove, handleTouchEnd])
-
-  // Returns binary direction — dragging further does NOT increase speed,
-  // per your original spec
-  const getDirection = useCallback((): { x: number; z: number } => {
-    const { active, deltaX, deltaY } = touchState.current
-    if (!active) return { x: 0, z: 0 }
-
-    const dragDistance = Math.sqrt(deltaX * deltaX + deltaY * deltaY)
-    if (dragDistance < DRAG_THRESHOLD) return { x: 0, z: 0 }
-
-    return {
-      x: deltaX > 0 ? 1 : deltaX < 0 ? -1 : 0,
-      z: deltaY > 0 ? 1 : deltaY < 0 ? -1 : 0,
-    }
-  }, [])
-
-  return { isMobile, getDirection }
 }

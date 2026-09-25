@@ -117,6 +117,28 @@ export default function AbdulrahmanController() {
     }
   }, [setAbdulrahmanPosition])
 
+  // ── DISTRICT TRAVEL: the guide comes along ─────────────
+  // When the visitor jumps to a district from the map, the guide is placed beside them
+  // and the tour carries on from that district. Left behind, the idle tour would walk
+  // the visitor straight back to a guide on the far side of town.
+  const travelArrival = useWorldStore((s) => s.travelArrival)
+  useEffect(() => {
+    if (!travelArrival || !bodyRef.current) return
+    const coord = WORLD_COORDINATES[travelArrival.path as DistrictName]
+    if (!coord) return
+    const spawn = mapSpawnToSphere(
+      [coord.spawnPoint[0] + CHARACTER_OFFSET_X, coord.spawnPoint[1], coord.spawnPoint[2]],
+      CHARACTER_CAPSULE_HEIGHT
+    )
+    bodyRef.current.setTranslation({ x: spawn[0], y: spawn[1], z: spawn[2] }, true)
+    bodyRef.current.setLinvel({ x: 0, y: 0, z: 0 }, true)
+    setAbdulrahmanPosition(spawn)
+    const index = TOUR_WAYPOINTS.findIndex(
+      (w) => w.position[0] === coord.spawnPoint[0] && w.position[2] === coord.spawnPoint[2]
+    )
+    if (index >= 0) setTourWaypointIndex(index)
+  }, [travelArrival, setAbdulrahmanPosition, setTourWaypointIndex])
+
   // ── DIALOGUE PLAYBACK ON WAYPOINT CHANGE ───────────
   useEffect(() => {
     if (!isTourActive) return

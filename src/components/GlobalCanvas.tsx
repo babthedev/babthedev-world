@@ -10,6 +10,8 @@ import HUDIcons from '@/ui/HUDIcons'
 import DistrictLabel from '@/ui/DistrictLabel'
 import ReadingPanel from '@/ui/ReadingPanel'
 import Minimap from '@/ui/Minimap'
+import WorldMap from '@/ui/WorldMap'
+import VirtualJoystick from '@/ui/VirtualJoystick'
 import DebugOverlay from '@/ui/DebugOverlay'
 import InkIrisTransition from '@/ui/InkIrisTransition'
 import ContactModal from '@/ui/ContactModal'
@@ -30,7 +32,7 @@ export default function GlobalCanvas() {
   return (
     <div className="fixed inset-0 z-0 bg-[#F2F1EC]">
       {/* ── 3D WORLD ─────────────────────────────────────── */}
-      <div className="fixed inset-0 z-0 pointer-events-auto">
+      <div className="fixed inset-0 z-0 pointer-events-auto touch-none">
         <KeyboardControls
           map={[
             { name: 'forward', keys: ['ArrowUp', 'KeyW'] },
@@ -67,6 +69,8 @@ export default function GlobalCanvas() {
       <ColophonModal />
       <IntroDialogue />
       <Minimap />
+      <WorldMap />
+      <VirtualJoystick />
       <DebugOverlay />
       <InkIrisTransition />
       <LoadingScreen />

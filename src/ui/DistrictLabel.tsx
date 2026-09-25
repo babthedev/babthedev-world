@@ -11,6 +11,7 @@ import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
 export default function DistrictLabel() {
   const visible = useWorldStore((s) => s.districtLabelVisible)
   const currentDistrict = useWorldStore((s) => s.currentDistrict)
+  const touchUi = useWorldStore((s) => s.touchUi)
 
   const label = WORLD_COORDINATES[currentDistrict as DistrictName]?.label ?? ''
   // One word per line so long names stack into a compact block instead of a wide banner
@@ -21,7 +22,9 @@ export default function DistrictLabel() {
       id="district-label"
       role="status"
       aria-live="polite"
-      className={`fixed bottom-40 left-4 z-30 pointer-events-none select-none md:bottom-[13.5rem] md:left-6
+      className={`fixed left-4 z-30 pointer-events-none select-none md:left-6 ${
+          touchUi ? 'bottom-44' : 'bottom-[13rem] md:bottom-[17rem]'
+        }
         transition-all duration-500 ease-out motion-reduce:transition-none ${
           visible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
         }`}

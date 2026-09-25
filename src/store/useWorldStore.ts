@@ -89,6 +89,24 @@ interface TransitionSlice {
   triggerCameraImpulse: () => void
 }
 
+interface NavigationSlice {
+  /** Touch is the visitor's input right now: shows the joystick and touch wording. */
+  touchUi: boolean
+  setTouchUi: (v: boolean) => void
+  /** The full world map is open. */
+  mapOpen: boolean
+  setMapOpen: (v: boolean) => void
+  /** Asks the visitor controller to move to a district; `id` makes repeat requests distinct. */
+  travelRequest: { path: string; id: number } | null
+  requestTravel: (path: string) => void
+  /** Set by the visitor once they have landed, so the guide can join them. */
+  travelArrival: { path: string; id: number } | null
+  /** The idle tour will not resume before this time (ms since epoch). */
+  tourHoldUntil: number
+  holdTour: (ms: number) => void
+  setTravelArrival: (a: { path: string; id: number }) => void
+}
+
 // ─── COMBINED STORE ───────────────────────────────────────
 
 interface WorldStore
@@ -99,9 +117,22 @@ interface WorldStore
     NPCSlice,
     DebugSlice,
     ResilienceSlice,
-    TransitionSlice {}
+    TransitionSlice,
+    NavigationSlice {}
 
 export const useWorldStore = create<WorldStore>((set) => ({
+  // Navigation
+  touchUi: false,
+  setTouchUi: (v) => set({ touchUi: v }),
+  mapOpen: false,
+  setMapOpen: (v) => set({ mapOpen: v }),
+  travelRequest: null,
+  tourHoldUntil: 0,
+  holdTour: (ms) => set({ tourHoldUntil: Date.now() + ms }),
+  travelArrival: null,
+  setTravelArrival: (a) => set({ travelArrival: a }),
+  requestTravel: (path) => set((s) => ({ travelRequest: { path, id: (s.travelRequest?.id ?? 0) + 1 } })),
+
   // Resilience
   isTabHidden: false,
   contextLost: false,

@@ -243,6 +243,8 @@ check('Movement: planet has no auto-generated cuboid collider',
   fileContains('src/components/canvas/World.tsx', 'colliders={false}'))
 check('Movement: keyboard input is never gated on touch capability',
   !fileContains('src/components/canvas/VisitorController.tsx', 'else if (isMobile)'))
+check('Touch: a virtual joystick drives the visitor and ends the guided tour',
+  fileExists('src/ui/VirtualJoystick.tsx') && fileContains('src/components/canvas/VisitorController.tsx', 'touchInput.active'))
 check('Movement: facing is a world-space vector (no yaw-angle drift)',
   fileContains('src/lib/sphereMath.ts', 'orientFromFacing') && !srcContains('facingAngle'))
 check('Q53: characters ghost through each other',

@@ -16,6 +16,7 @@ export default function IntroDialogue() {
   const setTourActive = useWorldStore((s) => s.setTourActive)
   const charactersReady = useWorldStore((s) => s.charactersReady)
   const greetingActive = useWorldStore((s) => s.greetingActive)
+  const touchUi = useWorldStore((s) => s.touchUi)
   const { playDialogueBlip, playTypewriterTap } = useAudioManager()
   const { trackEvent } = useTelemetry()
 
@@ -133,7 +134,7 @@ export default function IntroDialogue() {
 
         {/* Skip hint */}
         <p className="text-center text-black/40 font-mono text-xs mt-4 tracking-widest">
-          PRESS SPACE TO CONTINUE
+          {touchUi ? 'TAP ▶ TO CONTINUE' : 'PRESS SPACE TO CONTINUE'}
         </p>
       </div>
     </div>

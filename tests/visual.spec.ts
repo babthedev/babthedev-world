@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, devices } from '@playwright/test'
 import type { Object3D } from 'three'
 
 /** Dev-only hooks the app exposes on window. Absent in production builds, so ready() skips the test when they are missing. */
@@ -141,7 +141,7 @@ test.describe('Visitor movement', () => {
 
   test('the minimap draws the streets around the visitor and turns with the heading', async ({ page }) => {
     await ready(page)
-    const minimap = page.locator('canvas[data-minimap]')
+    const minimap = page.locator('canvas[data-map-variant="compact"]')
     await expect(minimap).toBeVisible()
     // Sample the minimap into a coarse greyscale grid
     const sample = () =>
@@ -245,5 +245,100 @@ test.describe('Opening handshake', () => {
     // ...and they let go and the greeting ends
     await page.waitForFunction(() => (window as unknown as DevWindow).__GREETING__.done, undefined, { timeout: 60000 })
     expect(await page.evaluate(() => (window as unknown as DevWindow).__GREETING__.weight)).toBe(0)
+  })
+})
+
+/** Store fields the touch and map tests read */
+interface NavState {
+  position: number[]
+  abdulrahmanPosition: number[]
+  isTourActive: boolean
+  mapOpen: boolean
+  introComplete: boolean
+  currentDistrict: string
+  charactersReady: boolean
+  touchUi: boolean
+}
+const nav = (page: import('@playwright/test').Page) =>
+  page.evaluate(() => (window as unknown as { __WORLD_STORE__: { getState: () => NavState } }).__WORLD_STORE__.getState())
+const dist = (a: number[], b: number[]) => Math.hypot(...a.map((v, i) => v - b[i]))
+
+async function whenPlayable(page: import('@playwright/test').Page) {
+  await page.goto('/')
+  await page.waitForFunction(() => !!(window as unknown as DevWindow).__WORLD_STORE__, undefined, { timeout: 120000 })
+  await page.waitForFunction(
+    () => (window as unknown as { __WORLD_STORE__: { getState: () => NavState } }).__WORLD_STORE__.getState().introComplete,
+    undefined,
+    { timeout: 120000 }
+  )
+}
+
+/**
+ * Phones and tablets. The visitor once could not move at all on a touch screen: only
+ * keys ended the guided tour, so it never ended, and a drag anywhere was ignored.
+ */
+test.describe('Touch devices', () => {
+  // A phone, minus defaultBrowserType (which can't be set inside a describe)
+  const { viewport, userAgent, deviceScaleFactor, isMobile, hasTouch } = devices['Pixel 7']
+  test.use({ viewport, userAgent, deviceScaleFactor, isMobile, hasTouch })
+  test.describe.configure({ timeout: 240_000 })
+
+  test('the joystick shows, walks the visitor, and takes them off the guided tour', async ({ page }) => {
+    await whenPlayable(page)
+    expect((await nav(page)).touchUi, 'a touch device starts in touch mode').toBe(true)
+    const stick = page.locator('[data-joystick]')
+    await expect(stick).toBeVisible()
+    await expect(stick).toHaveCSS('opacity', '1')
+
+    const box = (await stick.boundingBox())!
+    const cx = box.x + box.width / 2
+    const cy = box.y + box.height / 2
+    const cdp = await page.context().newCDPSession(page)
+    const touch = (type: 'touchStart' | 'touchMove' | 'touchEnd', x = 0, y = 0) =>
+      cdp.send('Input.dispatchTouchEvent', { type, touchPoints: type === 'touchEnd' ? [] : [{ x, y, id: 1 }] })
+
+    expect((await nav(page)).isTourActive, 'the guided tour is running').toBe(true)
+    const before = (await nav(page)).position
+    await touch('touchStart', cx, cy)
+    await touch('touchMove', cx, cy - 40) // thumb pushed up = forward
+    await page.waitForTimeout(3000)
+    const walking = await nav(page)
+    await touch('touchEnd')
+    expect(walking.isTourActive, 'touching the stick ends the guided tour').toBe(false)
+    expect(dist(walking.position, before), 'the visitor walked').toBeGreaterThan(3)
+  })
+
+  test('tapping the minimap opens the world map, and a district in it takes you there', async ({ page }) => {
+    await whenPlayable(page)
+    await page.locator('button[aria-label="Open world map"]').tap()
+    await expect(page.getByRole('dialog', { name: 'World map' })).toBeVisible()
+    expect((await nav(page)).mapOpen).toBe(true)
+
+    await page.getByRole('button', { name: /Projects Exhibition/ }).tap()
+    await expect(page.getByRole('dialog', { name: 'World map' })).toBeHidden()
+    await page.waitForFunction(
+      () => (window as unknown as { __WORLD_STORE__: { getState: () => NavState } }).__WORLD_STORE__.getState().currentDistrict === '/projects',
+      undefined,
+      { timeout: 60000 }
+    )
+    // The guide came too, and nothing pulls the visitor back across town
+    const arrived = await nav(page)
+    expect(dist(arrived.position, arrived.abdulrahmanPosition), 'the guide is beside the visitor').toBeLessThan(3)
+    await page.waitForTimeout(6000)
+    const later = await nav(page)
+    expect(dist(later.position, arrived.position), 'the visitor stays where they landed').toBeLessThan(2)
+  })
+})
+
+test.describe('Desktop', () => {
+  test('no joystick on a mouse-and-keyboard machine, and M opens the world map', async ({ page }) => {
+    test.setTimeout(240_000)
+    await whenPlayable(page)
+    expect((await nav(page)).touchUi).toBe(false)
+    await expect(page.locator('[data-joystick]')).toHaveCSS('opacity', '0')
+    await page.keyboard.press('KeyM')
+    await expect(page.getByRole('dialog', { name: 'World map' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog', { name: 'World map' })).toBeHidden()
   })
 })

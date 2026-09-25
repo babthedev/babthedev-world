@@ -32,7 +32,7 @@ const TILE =
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111]'
 
 export default function HUDIcons() {
-  const [mapOpen, setMapOpen] = useState(false)
+  const setMapOpen = useWorldStore((s) => s.setMapOpen)
   const [muted, setMutedState] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -72,8 +72,8 @@ export default function HUDIcons() {
   }, [setMuted])
 
   const toggleMap = useCallback(() => {
-    setMapOpen((prev) => !prev)
-  }, [])
+    setMapOpen(!useWorldStore.getState().mapOpen)
+  }, [setMapOpen])
 
   const openContact = useCallback(() => {
     playClick()
@@ -185,16 +185,6 @@ export default function HUDIcons() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [handleCapture])
 
-  // ── ESCAPE CLOSES MAP ────────────────────────────────────
-  useEffect(() => {
-    if (!mapOpen) return
-    function handleKeyDown(e: KeyboardEvent) {
-      if (e.code === 'Escape') setMapOpen(false)
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [mapOpen])
-
   return (
     <>
       {/* ── ICON STRIP ─────────────────────────────────── */}
@@ -264,72 +254,7 @@ export default function HUDIcons() {
       )}
 
       {/* ── MAP OVERLAY ────────────────────────────────── */}
-      {mapOpen && <DistrictMapOverlay onClose={() => setMapOpen(false)} />}
     </>
-  )
-}
-
-// ─── DISTRICT MAP OVERLAY ─────────────────────────────────
-
-function DistrictMapOverlay({ onClose }: { onClose: () => void }) {
-  return (
-    <div
-      className="fixed inset-0 z-40 bg-black/95 flex items-center justify-center px-6"
-      onClick={onClose}
-    >
-      <div
-        className="w-full max-w-md"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <h2 className="text-white font-merriweather text-2xl mb-8 text-center">
-          Site Map
-        </h2>
-
-        <div className="grid grid-cols-1 gap-3">
-          <MapEntry label="Welcome Terrace" path="/bio" />
-          <MapEntry label="The Hub" path="/" />
-          <MapEntry label="Projects Exhibition" path="/projects" />
-          <MapEntry label="The Library" path="/essays" />
-          <MapEntry label="Oryzon" path="#" locked />
-        </div>
-
-        <button
-          onClick={onClose}
-          className="mt-8 w-full border-2 border-white text-white py-3 font-inter tracking-wide hover:bg-white hover:text-black transition-colors"
-        >
-          [ ESC ] CLOSE
-        </button>
-      </div>
-    </div>
-  )
-}
-
-function MapEntry({
-  label,
-  path,
-  locked = false,
-}: {
-  label: string
-  path: string
-  locked?: boolean
-}) {
-  if (locked) {
-    return (
-      <div className="border-2 border-dashed border-white/30 px-4 py-3 flex items-center justify-between">
-        <span className="text-white/40 font-inter">{label}</span>
-        <span className="text-white/40 font-mono text-xs">COMING SOON</span>
-      </div>
-    )
-  }
-
-  return (
-    <a
-      href={path}
-      className="border-2 border-white px-4 py-3 flex items-center justify-between text-white hover:bg-white hover:text-black transition-colors font-inter"
-    >
-      {label}
-      <span className="font-mono text-xs">→</span>
-    </a>
   )
 }
 

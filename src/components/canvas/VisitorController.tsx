@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useEffect, useState } from 'react'
+import { useCallback, useRef, useEffect, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
 import { RigidBody, RapierRigidBody, CapsuleCollider, useRapier, interactionGroups } from '@react-three/rapier'
@@ -9,7 +9,8 @@ import { useWorldStore } from '@/store/useWorldStore'
 import CharacterModel from './CharacterModel'
 import { useCharacterAnimations } from '@/hooks/useCharacterAnimations'
 import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
-import { useMobileControls } from '@/hooks/useMobileControls'
+import { useTapToInteract } from '@/hooks/useMobileControls'
+import { touchInput } from '@/lib/touchInput'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import {
   VISITOR_SPEED,
@@ -60,16 +61,22 @@ const _greetDir = new Vector3()
 const SPAWN_HEIGHT = PLANET_RADIUS + CHARACTER_CAPSULE_HEIGHT
 const SPAWN_POS: [number, number, number] = [0, SPAWN_HEIGHT, 0]
 
+/** After a map jump, how long before the idle tour may resume */
+const TRAVEL_TOUR_HOLD_MS = 20_000
+
 export default function VisitorController() {
   const bodyRef = useRef<RapierRigidBody>(null)
   const { world } = useRapier()
   const modelRef = useRef<Group>(null)
   const [, get] = useKeyboardControls()
 
-  const { isMobile, getDirection } = useMobileControls(() => {
-    // Tap = Interact, reuses the same handler InteractiveProps listens for
-    window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
-  })
+  // Tap on the world = Interact, reuses the same handler InteractiveProps listens for.
+  // Walking is the virtual joystick (ui/VirtualJoystick), which writes to touchInput.
+  useTapToInteract(
+    useCallback(() => {
+      window.dispatchEvent(new KeyboardEvent('keydown', { code: 'KeyE' }))
+    }, [])
+  )
 
   const isTourActive = useWorldStore((s) => s.isTourActive)
   const isReading = useWorldStore((s) => s.isReading)
@@ -112,13 +119,10 @@ export default function VisitorController() {
     }
   }, [setPosition])
 
-  // ── DEV: TELEPORT HOOK (used by scripts/capture-poses.mjs) ──
-  // __TELEPORT__(flatX, flatZ, lookFlatX, lookFlatZ) places the visitor at a
-  // flat-world coordinate facing toward another flat-world coordinate.
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'production') return
-    const dev = window as unknown as Record<string, unknown>
-    dev.__TELEPORT__ = (x: number, z: number, lx: number, lz: number) => {
+  // Places the visitor at a flat-world coordinate, facing toward another flat-world
+  // coordinate. Used by district travel (the map) and the dev teleport hook.
+  const placeAt = useCallback(
+    (x: number, z: number, lx: number, lz: number) => {
       if (!bodyRef.current) return
       const spawn = mapSpawnToSphere([x, 0, z], CHARACTER_CAPSULE_HEIGHT)
       bodyRef.current.setTranslation({ x: spawn[0], y: spawn[1], z: spawn[2] }, true)
@@ -131,7 +135,7 @@ export default function VisitorController() {
       cameraRig.heading.copy(look)
       setFacingDir([look.x, look.y, look.z])
       setTourActive(false)
-      skipGreeting() // a teleport means a script or a developer is driving, not the intro
+      skipGreeting() // someone (a script or the map) is driving, not the intro
       setPosition(spawn)
       // isTourActive is a render-time value, so for a frame or two after this the
       // tour branch can still steer the visitor toward the guide and overwrite the
@@ -142,7 +146,37 @@ export default function VisitorController() {
         cameraRig.heading.copy(look)
         setFacingDir([look.x, look.y, look.z])
       }, 150)
-    }
+    },
+    [setPosition, setFacingDir, setTourActive]
+  )
+
+  // ── DISTRICT TRAVEL (from the world map) ──────────────
+  // An ink-iris wipe covers the jump. The visitor lands at the district's spawn point,
+  // whose trigger zone then announces the district as usual.
+  const travelRequest = useWorldStore((s) => s.travelRequest)
+  useEffect(() => {
+    if (!travelRequest) return
+    const coord = WORLD_COORDINATES[travelRequest.path as DistrictName]
+    if (!coord) return
+    const store = useWorldStore.getState()
+    store.setMapOpen(false)
+    store.triggerIrisTransition(() => {
+      // Face the middle of town from a district, and up the north street from the Hub
+      const [x, , z] = coord.spawnPoint
+      const toHub = travelRequest.path === '/'
+      placeAt(x, z, 0, toHub ? -8 : 0)
+      // Someone who just jumped here wants to look around, not be led away again
+      store.holdTour(TRAVEL_TOUR_HOLD_MS)
+      store.setTravelArrival({ path: travelRequest.path, id: travelRequest.id })
+    })
+  }, [travelRequest, placeAt])
+
+  // ── DEV: TELEPORT HOOK (used by scripts/capture-poses.mjs) ──
+  // __TELEPORT__(flatX, flatZ, lookFlatX, lookFlatZ)
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') return
+    const dev = window as unknown as Record<string, unknown>
+    dev.__TELEPORT__ = placeAt
     dev.__VISITOR__ = function visitorSnapshot() {
       const b = bodyRef.current
       if (!b) return null
@@ -159,7 +193,7 @@ export default function VisitorController() {
       delete dev.__TELEPORT__
       delete dev.__VISITOR__
     }
-  }, [setPosition, setFacingDir, setTourActive, world, get])
+  }, [placeAt, world, get])
 
   useFrame((state, delta) => {
     if (!bodyRef.current || !modelRef.current) return
@@ -172,7 +206,8 @@ export default function VisitorController() {
     // gives us "forward" and "right" directions on the curved surface.
     _normal.copy(getSurfaceNormal(_posVec))
     const { forward, backward, left, right } = get()
-    const hasInput = forward || backward || left || right
+    // Keys and the joystick both count: either one takes the visitor off the guided tour
+    const hasInput = forward || backward || left || right || touchInput.active
 
     // Movement input breaks tour immediately
     if (hasInput && isTourActive) {
@@ -224,12 +259,9 @@ export default function VisitorController() {
       if (right) _direction.add(_right)
       if (left) _direction.sub(_right)
 
-      if (isMobile) {
-        const touch = getDirection()
-        if (touch.x !== 0 || touch.z !== 0) {
-          _direction.addScaledVector(_forward, -touch.z)
-          _direction.addScaledVector(_right, touch.x)
-        }
+      if (touchInput.active) {
+        _direction.addScaledVector(_forward, touchInput.y)
+        _direction.addScaledVector(_right, touchInput.x)
       }
 
       if (_direction.lengthSq() > 0) {
