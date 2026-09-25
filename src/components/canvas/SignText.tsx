@@ -30,12 +30,14 @@ type SignTextProps = ComponentProps<typeof Text> & {
 export default function SignText({ position, rotation, faceOffset = 0.004, children, ...rest }: SignTextProps) {
   return (
     <group position={position} rotation={rotation}>
-      <Text font={WORLD_FONT} position={[0, 0, faceOffset]} material-side={FrontSide} {...rest}>
+      <Text font={WORLD_FONT} position={[0, 0, faceOffset]} {...rest}>
         {children}
+        <meshBasicMaterial side={FrontSide} transparent />
       </Text>
       <group rotation={[0, Math.PI, 0]}>
-        <Text font={WORLD_FONT} position={[0, 0, faceOffset]} material-side={FrontSide} {...rest}>
+        <Text font={WORLD_FONT} position={[0, 0, faceOffset]} {...rest}>
           {children}
+          <meshBasicMaterial side={FrontSide} transparent />
         </Text>
       </group>
     </group>

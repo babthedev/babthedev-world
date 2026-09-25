@@ -252,7 +252,7 @@ function StreetProps({ gradientMap }: { gradientMap: Texture }) {
         new MeshToonMaterial({
           color: style.color,
           gradientMap,
-          side: style.geo === 'plane' ? DoubleSide : undefined,
+          ...(style.geo === 'plane' ? { side: DoubleSide } : {}),
         }),
         { shadow: 0.3 }
       )
@@ -343,7 +343,7 @@ function Foliage({ gradientMap }: { gradientMap: Texture }) {
     const toMatrices = (list: { position: Vector3; quaternion: Quaternion; scale: Vector3 }[]) =>
       list.map((p) => new Matrix4().compose(p.position, p.quaternion, p.scale))
     const mat = (color: string, opts: Parameters<typeof paint>[1], side?: typeof DoubleSide) =>
-      paint(new MeshToonMaterial({ color, gradientMap, side }), opts)
+      paint(new MeshToonMaterial({ color, gradientMap, ...(side !== undefined ? { side } : {}) }), opts)
     return {
       trunk: { geometry: GEOMETRIES.cyl, material: mat('#4A4844', { shadow: 0.3 }), matrices: toMatrices(TREE_TRUNKS) },
       canopy: { geometry: CANOPY_GEO, material: mat('#74736E', { shadow: 0.46, speckle: 0.3 }), matrices: toMatrices(TREE_CANOPY) },
