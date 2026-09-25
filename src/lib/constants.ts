@@ -35,6 +35,12 @@ export const CAMERA_DIALOGUE_PULL = CAMERA_BACK * 0.167   // ~0.65m
 // old angle = atan(1.5/6) ≈ 14.0°, as a fraction of the old half-FOV (30°) ≈ 46.8%
 // new pan = tan(46.8% × new half-FOV 34°) × 3.9m ≈ 1.1m
 export const CAMERA_READING_PAN = 1.1
+// Q11: the camera holds its heading while you move and gently orbits toward the
+// facing direction when idle. While moving it only follows the FORWARD part of
+// the input, slowly, so W+D steers in an arc but pure strafe / back go straight
+// (following those would make the visitor circle).
+export const CAMERA_FOLLOW_IDLE = 1.5    // 1/s
+export const CAMERA_FOLLOW_MOVING = 1.2  // 1/s, scaled by the forward component of the input
 export const CAMERA_LERP = 5
 export const CAMERA_NEAR = 0.1
 export const CAMERA_FAR = 200

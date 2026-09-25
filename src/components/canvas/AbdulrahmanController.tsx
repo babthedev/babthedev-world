@@ -2,7 +2,7 @@
 
 import { useRef, useEffect, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { RigidBody, RapierRigidBody, CapsuleCollider } from '@react-three/rapier'
+import { RigidBody, RapierRigidBody, CapsuleCollider, interactionGroups } from '@react-three/rapier'
 import { Vector3, Group, DataTexture, RedFormat, Texture, Quaternion } from 'three'
 import { useWorldStore } from '@/store/useWorldStore'
 import CharacterModel from './CharacterModel'
@@ -26,6 +26,8 @@ import {
   getSurfaceNormal,
   getTangentBasis,
   projectOntoTangentPlane,
+  settleFacing,
+  orientFromFacing,
 } from '@/lib/sphereMath'
 import { flatToSphere, mapSpawnToSphere } from '@/lib/surfacePlacement'
 import { emitFootstepPuff } from './FootstepPuffs'
@@ -51,12 +53,10 @@ const _direction = new Vector3()
 const _tangentVel = new Vector3()
 const _posVec = new Vector3()
 const _normal = new Vector3()
-const _upRef = new Vector3(0, 1, 0)
 const _currentVel = new Vector3()
 const _visVec = new Vector3()
 const _faceDir = new Vector3()
 const _qAlign = new Quaternion()
-const _qYaw = new Quaternion()
 
 // Spawn next to visitor on north pole, offset slightly on the tangent plane
 const SPAWN_HEIGHT = PLANET_RADIUS + CHARACTER_CAPSULE_HEIGHT
@@ -87,7 +87,8 @@ export default function AbdulrahmanController() {
 
   const dialogueTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const lastWaypoint = useRef(-1)
-  const yawRef = useRef(0)
+  // Facing is a world-space tangent vector, not an angle (see settleFacing)
+  const facingRef = useRef(new Vector3(0, 0, 1))
   const lastDispatchedPos = useRef(new Vector3(...SPAWN_POS))
   const isWaitingForVisitorRef = useRef(false)
   const footstepDistanceRef = useRef(0.4)
@@ -152,7 +153,7 @@ export default function AbdulrahmanController() {
 
     // ── SURFACE NORMAL & TANGENT BASIS ──────────────────
     _normal.copy(getSurfaceNormal(_posVec))
-    const { forward: tangentForward, right: tangentRight } = getTangentBasis(_normal)
+    const { right: tangentRight } = getTangentBasis(_normal)
 
     _direction.set(0, 0, 0)
 
@@ -180,10 +181,7 @@ export default function AbdulrahmanController() {
         const faceVisDir = projectOntoTangentPlane(_faceDir, _normal)
         if (faceVisDir.lengthSq() > 0.01) {
           faceVisDir.normalize()
-          yawRef.current = Math.atan2(
-            faceVisDir.dot(tangentRight),
-            faceVisDir.dot(tangentForward)
-          )
+          facingRef.current.copy(faceVisDir)
         }
         _direction.set(0, 0, 0)
       } else {
@@ -288,18 +286,11 @@ export default function AbdulrahmanController() {
 
     // ── FACING & ALIGNMENT ───────────────────────────────
     const speed = _direction.length()
-    if (speed > 0.1) {
-      const facingDir = projectOntoTangentPlane(_direction, _normal).normalize()
-      yawRef.current = Math.atan2(
-        facingDir.dot(tangentRight),
-        facingDir.dot(tangentForward)
-      )
-    }
+    if (speed > 0.1) facingRef.current.copy(_direction)
+    settleFacing(_normal, facingRef.current)
 
-    // Align body "up" to surface normal + apply yaw
-    _qAlign.setFromUnitVectors(_upRef, _normal)
-    const qYaw = _qYaw.setFromAxisAngle(_normal, yawRef.current)
-    _qAlign.premultiply(qYaw)
+    // Body: +Y = surface normal, +Z = facing
+    orientFromFacing(_normal, facingRef.current, _qAlign)
     modelRef.current.quaternion.copy(_qAlign)
 
     // ── ANIMATION STATE ──────────────────────────────────
@@ -339,8 +330,10 @@ export default function AbdulrahmanController() {
       enabledRotations={[false, false, false]}
       linearDamping={LINEAR_DAMPING}
     >
+      {/* Q53: ghosts through the visitor (group 2 vs group 1), collides with the world (group 0) */}
       <CapsuleCollider
         args={[CHARACTER_CAPSULE_HEIGHT / 2, CHARACTER_CAPSULE_RADIUS]}
+        collisionGroups={interactionGroups(2, [0])}
       />
       <group ref={modelRef}>
         <CharacterModel

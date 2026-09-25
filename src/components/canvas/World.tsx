@@ -59,7 +59,11 @@ export default function World() {
           BallCollider matches the sphere geometry exactly.
       ──────────────────────────────────────────────── */}
       <OryzonGate />
-      <RigidBody type="fixed" name="ground">
+      {/* colliders={false}: RigidBody otherwise auto-generates a CUBOID from the
+          child mesh's bounding box, turning the planet into a 50m cube whose flat
+          faces poke out of the sphere (characters stood on invisible planes
+          metres above the street). Only the BallCollider below should exist. */}
+      <RigidBody type="fixed" name="ground" colliders={false}>
         <mesh receiveShadow>
           <sphereGeometry args={[PLANET_RADIUS, SPHERE_SEGMENTS, SPHERE_SEGMENTS]} />
           <meshToonMaterial color={GROUND_COLOR} gradientMap={gradientMap} />

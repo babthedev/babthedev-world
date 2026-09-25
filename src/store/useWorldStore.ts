@@ -33,10 +33,11 @@ interface TourSlice {
 interface PlayerSlice {
   position: [number, number, number]
   abdulrahmanPosition: [number, number, number]
-  facingAngle: number
+  /** World-space unit tangent vector the visitor faces (see settleFacing in sphereMath). */
+  facingDir: [number, number, number]
   setPosition: (pos: [number, number, number]) => void
   setAbdulrahmanPosition: (pos: [number, number, number]) => void
-  setFacingAngle: (angle: number) => void
+  setFacingDir: (dir: [number, number, number]) => void
 }
 
 interface UISlice {
@@ -138,10 +139,10 @@ export const useWorldStore = create<WorldStore>((set) => ({
   // Player — spawned on sphere surface at the North pole
   position: [0, INITIAL_SURFACE_Y, 0],
   abdulrahmanPosition: [CHARACTER_OFFSET_X, INITIAL_SURFACE_Y, 0],
-  facingAngle: 0,
+  facingDir: [0, 0, 1],
   setPosition: (pos) => set({ position: pos }),
   setAbdulrahmanPosition: (pos) => set({ abdulrahmanPosition: pos }),
-  setFacingAngle: (angle) => set({ facingAngle: angle }),
+  setFacingDir: (dir) => set({ facingDir: dir }),
 
   // UI
   activePanel: null,

@@ -1,4 +1,4 @@
-import { Vector3 } from 'three'
+import { Vector3, Quaternion } from 'three'
 import {
   PLANET_RADIUS,
   polarToCartesian,
@@ -9,6 +9,8 @@ import {
   alignToNormalQuaternion,
   surfaceDistance,
   slerpOnSphere,
+  settleFacing,
+  orientFromFacing,
 } from '../sphereMath'
 
 function assert(condition: boolean, message: string) {
@@ -110,6 +112,39 @@ export function runSphereMathTests() {
       prev = f
     }
     assert(worst > 0.99, `Tangent frame does not jump when crossing the Hub (worst step dot ${worst.toFixed(3)})`)
+  }
+
+  // 5c. facing vectors: orientation always agrees with the facing, everywhere
+  {
+    for (const [px, py, pz] of [[0, 1, 0], [1, 0, 0], [0.3, -0.8, 0.5], [-0.6, 0.1, -0.79], [0.01, 0.9999, 0]]) {
+      const n = new Vector3(px, py, pz).normalize()
+      const { forward, right } = getTangentBasis(n)
+      const facing = forward.clone().multiplyScalar(0.6).addScaledVector(right, -0.8) // arbitrary heading
+      const q = orientFromFacing(n, facing, new Quaternion())
+      const up = new Vector3(0, 1, 0).applyQuaternion(q)
+      const fwd = new Vector3(0, 0, 1).applyQuaternion(q)
+      assertApprox(up.dot(n), 1, 1e-6, 'orientFromFacing: local +Y is the surface normal')
+      assertApprox(fwd.dot(facing.clone().normalize()), 1, 1e-6, 'orientFromFacing: local +Z is the facing direction')
+    }
+    // a facing vector that points along the normal must not produce NaN
+    const degenerate = orientFromFacing(new Vector3(0, 1, 0), new Vector3(0, 1, 0), new Quaternion())
+    assert(Number.isFinite(degenerate.x + degenerate.y + degenerate.z + degenerate.w), 'orientFromFacing survives a facing parallel to the normal')
+  }
+
+  // 5d. re-projecting a FIXED facing vector along a great circle keeps it along the direction of travel
+  {
+    const start = new Vector3(0.2, 1, 0.1).normalize()
+    const travel = getTangentBasis(start).forward.clone().multiplyScalar(0.7).addScaledVector(getTangentBasis(start).right, 0.714).normalize()
+    const axis = new Vector3().crossVectors(start, travel).normalize()
+    const facing = travel.clone()
+    let worst = 1
+    for (let step = 1; step <= 60; step++) {
+      const pos = start.clone().applyAxisAngle(axis, step * 0.02)
+      const truth = travel.clone().applyAxisAngle(axis, step * 0.02) // true direction of travel at pos
+      settleFacing(pos, facing) // never updated by the "player": only re-projected
+      worst = Math.min(worst, facing.dot(truth))
+    }
+    assert(worst > 0.999, `facing stays along the direction of travel over a long walk (worst dot ${worst.toFixed(4)})`)
   }
 
   // 6. alignToNormalQuaternion

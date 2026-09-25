@@ -17,7 +17,8 @@ import {
   CAMERA_DIALOGUE_PULL,
   CAMERA_READING_PAN,
 } from '@/lib/constants'
-import { getSurfaceNormal, getTangentBasis } from '@/lib/sphereMath'
+import { getSurfaceNormal, getTangentBasis, settleFacing } from '@/lib/sphereMath'
+import { cameraRig } from '@/lib/cameraRig'
 
 // Pre-allocated vectors — avoids GC pressure inside useFrame
 const _desired = new Vector3()
@@ -28,10 +29,12 @@ const _behindDir = new Vector3()
 const _rightScaled = new Vector3()
 const _panShift = new Vector3()
 const _camRayDir = new Vector3()
+const _facingTarget = new Vector3()
+const _facingCross = new Vector3()
 
 export default function CameraController() {
   const visitorPos = useWorldStore((state) => state.position)
-  const facingAngle = useWorldStore((state) => state.facingAngle)
+  const facingDir = useWorldStore((state) => state.facingDir)
   const isReading = useWorldStore((state) => state.isReading)
   const currentDialogue = useWorldStore((state) => state.currentDialogue)
   const npcDialogue = useWorldStore((state) => state.npcDialogue)
@@ -43,7 +46,9 @@ export default function CameraController() {
   // Camera tracks its OWN smoothed angle — not the character's live angle.
   // This creates the "camera lags slightly behind the turn" feel
   // that messenger.abeto.co has.
-  const smoothedAngle = useRef(0)
+  // The heading lives in cameraRig (shared with the visitor) as a world-space
+  // tangent VECTOR: unlike an angle in a fixed reference frame it stays
+  // consistent as the visitor walks a great circle.
   const dialogueGlide = useRef(0)
   const arrivalElevation = useRef(0)
 
@@ -74,11 +79,20 @@ export default function CameraController() {
     _normal.copy(getSurfaceNormal(_posVec))
     const { forward: tangentForward, right: tangentRight } = getTangentBasis(_normal)
 
-    // Smooth the camera's angle toward visitor's facing angle
-    const angleAlpha = Math.min(1, 3.5 * dt)
-    // Lerp along the shortest arc so crossing ±π doesn't spin the camera 360°
-    const angleDelta = MathUtils.euclideanModulo(facingAngle - smoothedAngle.current + Math.PI, Math.PI * 2) - Math.PI
-    smoothedAngle.current += angleDelta * angleAlpha
+    // Rotate the smoothed heading toward the target heading about the surface
+    // normal, along the shortest arc (so crossing ±π can't spin the camera 360°)
+    _facingTarget.set(facingDir[0], facingDir[1], facingDir[2])
+    settleFacing(_normal, _facingTarget)
+    settleFacing(_normal, cameraRig.heading)
+    const headingError = Math.atan2(
+      _normal.dot(_facingCross.crossVectors(cameraRig.heading, _facingTarget)),
+      cameraRig.heading.dot(_facingTarget)
+    )
+    // Follow rate is set by the visitor: gentle when idle, slow while moving
+    // forward, zero for pure strafe/back (Q11)
+    cameraRig.heading.applyAxisAngle(_normal, headingError * Math.min(1, cameraRig.followRate * dt))
+    // Heading expressed in this frame's tangent basis, for the orbit maths below
+    const smoothedAngle = Math.atan2(cameraRig.heading.dot(tangentRight), cameraRig.heading.dot(tangentForward))
 
     // Q143: Smoothly glide inward 1m and orbit 20° (0.35 rad) during dialogue
     const dialogueAlpha = Math.min(1, 3.5 * dt)
@@ -98,7 +112,7 @@ export default function CameraController() {
 
     const targetDist = CAMERA_BACK - dialogueGlide.current * CAMERA_DIALOGUE_PULL
     const dialogueAngleOffset = dialogueGlide.current * 0.35
-    const a = smoothedAngle.current + dialogueAngleOffset
+    const a = smoothedAngle + dialogueAngleOffset
 
     // ── Q142: PITCH CLAMPING ────────────────────────────
     // Clamp vertical orbit angle to -15° (down) to +60° (up) relative to tangent plane
@@ -131,11 +145,14 @@ export default function CameraController() {
       .addScaledVector(_normal, CAMERA_HEIGHT + arrivalElevation.current + pitchElevation + impulseOffset.current)
       .add(_panShift)
 
-    // Look past the visitor — ahead along their facing direction and at
-    // roughly chest height — so the horizon drops and buildings loom
+    // Look past the visitor at roughly chest height so the horizon drops and
+    // buildings loom. "Ahead" MUST run along the line from the camera through the
+    // visitor (-_behindDir), not along the global tangent forward: forward
+    // movement is camera-relative, so any yaw error here makes the visitor
+    // drift off its facing and spiral.
     _lookAt.set(vx, vy, vz)
       .addScaledVector(_normal, CAMERA_LOOK_HEIGHT)
-      .addScaledVector(tangentForward, Math.cos(dialogueAngleOffset) * CAMERA_LOOK_AHEAD * (1 - dialogueGlide.current * 0.6))
+      .addScaledVector(_behindDir, -CAMERA_LOOK_AHEAD * (1 - dialogueGlide.current * 0.6))
 
     // ── Q141: SPRING-ARM OCCLUSION RAYCAST ──────────────
     // Pulls camera forward 0.3m off blocking walls to avoid clipping

@@ -1,4 +1,4 @@
-import { Vector3, Quaternion } from 'three'
+import { Vector3, Quaternion, Matrix4 } from 'three'
 
 /**
  * Standard planet radius (in world units).
@@ -115,6 +115,38 @@ export function alignToNormalQuaternion(pos: Vector3, yaw: number = 0): Quaterni
   }
 
   return qAlign
+}
+
+const _fx = new Vector3()
+const _fz = new Vector3()
+const _fm = new Matrix4()
+
+/**
+ * Makes `facing` a unit vector lying in the tangent plane at `normal` (in place).
+ * Re-projecting a fixed world vector onto successive tangent planes carries it
+ * along a great circle exactly (the vector stays along the direction of travel),
+ * which is why facing is stored as a vector rather than as an angle: an angle
+ * is only meaningful relative to a reference frame, and every frame on a sphere
+ * rotates against a straight path.
+ */
+export function settleFacing(normal: Vector3, facing: Vector3): Vector3 {
+  facing.addScaledVector(normal, -facing.dot(normal))
+  if (facing.lengthSq() < 1e-8) facing.copy(getTangentBasis(normal).forward)
+  return facing.normalize()
+}
+
+/**
+ * Orients an object so local +Y is the surface normal and local +Z points along
+ * `facing` (re-projected onto the tangent plane first). Uses the same
+ * y × z convention as the street generator's basis, so a character's model and
+ * its movement direction can never disagree.
+ */
+export function orientFromFacing(normal: Vector3, facing: Vector3, out: Quaternion): Quaternion {
+  _fz.copy(facing)
+  settleFacing(normal, _fz)
+  _fx.crossVectors(normal, _fz)
+  _fm.makeBasis(_fx, normal, _fz)
+  return out.setFromRotationMatrix(_fm)
 }
 
 /**

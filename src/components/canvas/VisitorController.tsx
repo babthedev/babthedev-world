@@ -3,7 +3,7 @@
 import { useRef, useEffect, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import { useKeyboardControls } from '@react-three/drei'
-import { RigidBody, RapierRigidBody, CapsuleCollider } from '@react-three/rapier'
+import { RigidBody, RapierRigidBody, CapsuleCollider, useRapier, interactionGroups } from '@react-three/rapier'
 import { Vector3, Group, Texture, DataTexture, RedFormat, Quaternion } from 'three'
 import { useWorldStore } from '@/store/useWorldStore'
 import CharacterModel from './CharacterModel'
@@ -14,6 +14,8 @@ import { useAudioManager } from '@/hooks/useAudioManager'
 import {
   VISITOR_SPEED,
   VISITOR_BOOST_SPEED,
+  CAMERA_FOLLOW_IDLE,
+  CAMERA_FOLLOW_MOVING,
   TETHER_DISTANCE,
   LINEAR_DAMPING,
   VISITOR_COLOR,
@@ -24,11 +26,13 @@ import {
 } from '@/lib/constants'
 import {
   getSurfaceNormal,
-  getTangentBasis,
   projectOntoTangentPlane,
+  settleFacing,
+  orientFromFacing,
 } from '@/lib/sphereMath'
 import { mapSpawnToSphere } from '@/lib/surfacePlacement'
 import { emitFootstepPuff } from './FootstepPuffs'
+import { cameraRig } from '@/lib/cameraRig'
 
 // Shared gradient texture — created once here, passed down.
 const gradientMap = new DataTexture(
@@ -44,13 +48,10 @@ const _direction = new Vector3()
 const _tangentVel = new Vector3()
 const _forward = new Vector3()
 const _right = new Vector3()
-const _camDir = new Vector3()
 const _posVec = new Vector3()
 const _normal = new Vector3()
-const _upRef = new Vector3(0, 1, 0)
 const _currentVel = new Vector3()
 const _qAlign = new Quaternion()
-const _qYaw = new Quaternion()
 
 // Spawn on the north pole of the sphere (top), slightly above surface
 const SPAWN_HEIGHT = PLANET_RADIUS + CHARACTER_CAPSULE_HEIGHT
@@ -58,6 +59,7 @@ const SPAWN_POS: [number, number, number] = [0, SPAWN_HEIGHT, 0]
 
 export default function VisitorController() {
   const bodyRef = useRef<RapierRigidBody>(null)
+  const { world } = useRapier()
   const modelRef = useRef<Group>(null)
   const [, get] = useKeyboardControls()
 
@@ -71,7 +73,7 @@ export default function VisitorController() {
   const abdulPos = useWorldStore((s) => s.abdulrahmanPosition)
   const setPosition = useWorldStore((s) => s.setPosition)
   const setTourActive = useWorldStore((s) => s.setTourActive)
-  const setFacingAngle = useWorldStore((s) => s.setFacingAngle)
+  const setFacingDir = useWorldStore((s) => s.setFacingDir)
 
   const { updateFromVelocity } = useCharacterAnimations()
   const animStateRef = useRef<'idle' | 'walk'>('idle')
@@ -80,8 +82,9 @@ export default function VisitorController() {
   const { playFootstep } = useAudioManager()
 
   // Track the character's heading (yaw) on the tangent plane
-  const yawRef = useRef(0)
-  const lastDispatchedYaw = useRef(0)
+  // Facing is a world-space tangent vector, not an angle (see settleFacing)
+  const facingRef = useRef(new Vector3(0, 0, 1))
+  const lastDispatchedDir = useRef(new Vector3(0, 0, 1))
   const lastDispatchedPos = useRef(new Vector3(...SPAWN_POS))
   // Track continuous locomotion time for subtle speed boost (Q18)
   const movingDurationRef = useRef(0)
@@ -116,16 +119,39 @@ export default function VisitorController() {
       const here = new Vector3(...spawn)
       const n = getSurfaceNormal(here)
       const look = projectOntoTangentPlane(new Vector3(...mapSpawnToSphere([lx, 0, lz], 0)).sub(here), n).normalize()
-      const { forward: f, right: r } = getTangentBasis(n)
-      yawRef.current = Math.atan2(look.dot(r), look.dot(f))
-      setFacingAngle(yawRef.current)
+      facingRef.current.copy(look)
+      lastDispatchedDir.current.copy(look)
+      cameraRig.heading.copy(look)
+      setFacingDir([look.x, look.y, look.z])
       setTourActive(false)
       setPosition(spawn)
+      // isTourActive is a render-time value, so for a frame or two after this the
+      // tour branch can still steer the visitor toward the guide and overwrite the
+      // facing. Re-apply once that has settled.
+      setTimeout(() => {
+        facingRef.current.copy(look)
+        lastDispatchedDir.current.copy(look)
+        cameraRig.heading.copy(look)
+        setFacingDir([look.x, look.y, look.z])
+      }, 150)
+    }
+    ;(window as any).__VISITOR__ = () => {
+      const b = bodyRef.current
+      if (!b) return null
+      const t = b.translation()
+      const v = b.linvel()
+      const contacts: unknown[] = []
+      world.contactPairsWith(b.collider(0), (other) => {
+        const c = other.translation()
+        contacts.push({ shape: other.shapeType(), at: [c.x, c.y, c.z].map((n) => +n.toFixed(2)), body: other.parent()?.bodyType() })
+      })
+      return { pos: [t.x, t.y, t.z], vel: [v.x, v.y, v.z], sleeping: b.isSleeping(), mass: b.mass(), contacts, keys: get(), tour: useWorldStore.getState().isTourActive, reading: useWorldStore.getState().isReading }
     }
     return () => {
       delete (window as any).__TELEPORT__
+      delete (window as any).__VISITOR__
     }
-  }, [setPosition, setFacingAngle, setTourActive])
+  }, [setPosition, setFacingDir, setTourActive])
 
   useFrame((state, delta) => {
     if (!bodyRef.current || !modelRef.current) return
@@ -137,8 +163,6 @@ export default function VisitorController() {
     // The normal points outward from sphere center; tangent basis
     // gives us "forward" and "right" directions on the curved surface.
     _normal.copy(getSurfaceNormal(_posVec))
-    const { forward: tangentForward, right: tangentRight } = getTangentBasis(_normal)
-
     const { forward, backward, left, right } = get()
     const hasInput = forward || backward || left || right
 
@@ -172,40 +196,50 @@ export default function VisitorController() {
         _direction.copy(projectOntoTangentPlane(_direction, _normal))
         _direction.normalize().multiplyScalar(VISITOR_SPEED * 0.9)
       }
-    } else if (isMobile) {
-      const touch = getDirection()
-      if (touch.x !== 0 || touch.z !== 0) {
-        // Use camera direction projected onto tangent plane for mobile
-        state.camera.getWorldDirection(_camDir)
-        const camTangent = projectOntoTangentPlane(_camDir, _normal).normalize()
-        _right.crossVectors(_normal, camTangent).normalize()
-        _direction.addScaledVector(camTangent, -touch.z)
-        _direction.addScaledVector(_right, touch.x)
-        if (_direction.lengthSq() > 0) {
-          _direction.normalize().multiplyScalar(currentSpeed)
-        }
-      }
     } else {
-      // ── FREE ROAM: camera-relative input mapped to tangent plane ──
-      // Get camera forward direction and project it onto the tangent plane
-      // so movement always feels "along the surface"
-      state.camera.getWorldDirection(_camDir)
-      _forward.copy(projectOntoTangentPlane(_camDir, _normal))
-      if (_forward.lengthSq() > 0.0001) {
-        _forward.normalize()
-      } else {
-        _forward.copy(tangentForward)
-      }
-      _right.crossVectors(_normal, _forward).normalize()
+      // ── FREE ROAM: input relative to the camera HEADING ──
+      // The heading, not the camera's view vector: the camera adds dialogue
+      // orbit, look-ahead and pitch on top of it, and none of those may steer
+      // the character (see cameraRig).
+      _forward.copy(cameraRig.heading)
+      settleFacing(_normal, _forward)
+      // right = forward × up. (normal × forward is the LEFT vector, which used to
+      // make D strafe left and A strafe right.)
+      _right.crossVectors(_forward, _normal).normalize()
 
+      // Keyboard is ALWAYS live. Touch is an additional input, never a
+      // replacement: navigator.maxTouchPoints > 0 on touch-screen laptops and
+      // Windows tablets, so treating "touch-capable" as "phone" used to discard
+      // every key press on those machines.
       if (forward) _direction.add(_forward)
       if (backward) _direction.sub(_forward)
       if (right) _direction.add(_right)
       if (left) _direction.sub(_right)
 
+      if (isMobile) {
+        const touch = getDirection()
+        if (touch.x !== 0 || touch.z !== 0) {
+          _direction.addScaledVector(_forward, -touch.z)
+          _direction.addScaledVector(_right, touch.x)
+        }
+      }
+
       if (_direction.lengthSq() > 0) {
         _direction.normalize().multiplyScalar(currentSpeed)
       }
+    }
+
+    // ── CAMERA FOLLOW RATE (Q11) ─────────────────────────
+    // Idle: gently orbit toward the facing. Moving: follow only the FORWARD part
+    // of the input, slowly, so W+D steers in an arc while pure strafe / back
+    // go straight instead of circling.
+    if (_direction.lengthSq() < 1e-6) {
+      cameraRig.followRate = CAMERA_FOLLOW_IDLE
+    } else if (isTourActive) {
+      cameraRig.followRate = CAMERA_FOLLOW_MOVING
+    } else {
+      const forwardPart = Math.max(0, _direction.dot(_forward)) / currentSpeed
+      cameraRig.followRate = CAMERA_FOLLOW_MOVING * forwardPart
     }
 
     // ── APPLY TANGENT-PLANE VELOCITY ─────────────────────
@@ -252,25 +286,20 @@ export default function VisitorController() {
     // then apply yaw rotation for facing direction.
     const speed = _direction.length()
     if (speed > 0.1) {
-      // Compute facing direction in tangent plane
-      const facingDir = projectOntoTangentPlane(_direction, _normal).normalize()
-      // Yaw angle relative to the tangent "forward"
-      yawRef.current = Math.atan2(
-        facingDir.dot(tangentRight),
-        facingDir.dot(tangentForward)
-      )
-      if (Math.abs(yawRef.current - lastDispatchedYaw.current) > 0.05) {
-        lastDispatchedYaw.current = yawRef.current
-        setFacingAngle(yawRef.current)
-      }
+      // Facing = the direction we are actually moving, as a tangent vector
+      facingRef.current.copy(_direction)
+    }
+    // Keep it tangent to the surface as we move (exact along a great circle)
+    settleFacing(_normal, facingRef.current)
+    // Publish to the camera only when the visitor really turns (~2°), not on
+    // every frame of a straight walk
+    if (facingRef.current.dot(lastDispatchedDir.current) < 0.9994) {
+      lastDispatchedDir.current.copy(facingRef.current)
+      setFacingDir([facingRef.current.x, facingRef.current.y, facingRef.current.z])
     }
 
-    // Align body "up" to surface normal
-    _qAlign.setFromUnitVectors(_upRef, _normal)
-    // Apply yaw on top of normal alignment
-    const qYaw = _qYaw.setFromAxisAngle(_normal, yawRef.current)
-    _qAlign.premultiply(qYaw)
-
+    // Body: +Y = surface normal, +Z = facing
+    orientFromFacing(_normal, facingRef.current, _qAlign)
     modelRef.current.quaternion.copy(_qAlign)
 
     // ── ANIMATION STATE ─────────────────────────────────
@@ -308,8 +337,13 @@ export default function VisitorController() {
       enabledRotations={[false, false, false]}
       linearDamping={LINEAR_DAMPING}
     >
+      {/* Q53: characters ghost through each other (group 1 vs the guide's group 2)
+          but still collide with the world (group 0: planet, buildings). Without
+          this the guide, who stands 0.7m away with 0.4m-radius capsules, shoves
+          the visitor sideways every frame. */}
       <CapsuleCollider
         args={[CHARACTER_CAPSULE_HEIGHT / 2, CHARACTER_CAPSULE_RADIUS]}
+        collisionGroups={interactionGroups(1, [0])}
       />
       <group ref={modelRef}>
         <CharacterModel
