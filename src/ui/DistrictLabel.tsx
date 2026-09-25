@@ -3,28 +3,44 @@
 import { useWorldStore } from '@/store/useWorldStore'
 import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
 
+/**
+ * District title card. Big blocky type in the bottom-left, the way Messenger
+ * announces a place: paper-white fill, thick ink outline, hard offset shadow.
+ * Sits above the compass. Slides in on arrival and out again after a few seconds.
+ */
 export default function DistrictLabel() {
   const visible = useWorldStore((s) => s.districtLabelVisible)
   const currentDistrict = useWorldStore((s) => s.currentDistrict)
 
-  const label =
-    WORLD_COORDINATES[currentDistrict as DistrictName]?.label ?? ''
+  const label = WORLD_COORDINATES[currentDistrict as DistrictName]?.label ?? ''
+  // One word per line so long names stack into a compact block instead of a wide banner
+  const words = label.split(' ')
 
   return (
     <div
-      className={`fixed top-8 left-1/2 -translate-x-1/2 z-30 pointer-events-none transition-all duration-500 ease-out ${
-        visible
-          ? 'opacity-100 translate-y-0 scale-100'
-          : 'opacity-0 -translate-y-4 scale-95'
-      }`}
+      id="district-label"
+      role="status"
+      aria-live="polite"
+      className={`fixed bottom-20 left-4 z-30 pointer-events-none select-none md:bottom-24 md:left-8
+        transition-all duration-500 ease-out motion-reduce:transition-none ${
+          visible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-8'
+        }`}
     >
-      <div className="bg-white border-2 border-black px-8 py-2.5 shadow-[4px_4px_0px_0px_rgba(0,0,0,1)] text-center select-none">
-        <span className="text-black font-inter text-xs md:text-sm font-bold tracking-[0.2em] uppercase block">
-          {label}
-        </span>
-        <span className="text-black/40 font-mono text-[9px] tracking-widest uppercase block mt-0.5">
-          District Boundary
-        </span>
+      <span className="sr-only">District: {label}</span>
+      <div
+        aria-hidden="true"
+        className="font-inter font-black uppercase leading-[0.88] tracking-tight text-[#F3F2ED] text-[clamp(2.4rem,6.5vw,5.5rem)]"
+        style={{
+          WebkitTextStroke: '0.09em #111',
+          paintOrder: 'stroke fill',
+          textShadow: '0.06em 0.06em 0 #111',
+        }}
+      >
+        {words.map((w, i) => (
+          <span key={i} className="block">
+            {w}
+          </span>
+        ))}
       </div>
     </div>
   )

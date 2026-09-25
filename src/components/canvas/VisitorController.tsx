@@ -103,6 +103,9 @@ export default function VisitorController() {
         true
       )
       setPosition(spawn)
+      // The trigger sensor ignores the district you are already on (the URL matches),
+      // so a deep link would otherwise leave the title card naming the Hub.
+      useWorldStore.getState().setCurrentDistrict(path)
     }
   }, [setPosition])
 

@@ -49,25 +49,29 @@ await page.waitForFunction(
 await page.evaluate(() => window.__WORLD_STORE__?.getState().setIntroComplete(true))
 await page.waitForTimeout(1500)
 
+// One whole frame (all passes) rather than the last post pass only
+const measure = () =>
+  page.evaluate(async () => {
+    const r = window.__THREE_RENDERER__
+    if (!r) return null
+    r.info.autoReset = false
+    await new Promise((res) => requestAnimationFrame(res))
+    r.info.reset()
+    await new Promise((res) => requestAnimationFrame(res))
+    const out = { calls: r.info.render.calls, triangles: r.info.render.triangles }
+    r.info.autoReset = true
+    return out
+  })
+const perPose = []
+
 for (const [name, x, z, lx, lz] of POSES) {
   await page.evaluate(([x, z, lx, lz]) => window.__TELEPORT__(x, z, lx, lz), [x, z, lx, lz])
   await page.waitForTimeout(2500) // camera lerp + guide catch-up
   await page.screenshot({ path: join(outDir, `${name}.png`) })
-  console.log(`captured ${name}`)
+  const m = await measure()
+  if (m) perPose.push({ name, ...m })
+  console.log(`captured ${name}${m ? `  (${m.calls} draw calls, ${(m.triangles / 1000).toFixed(0)}k tris)` : ''}`)
 }
-
-// Count one whole frame (all passes) rather than the last post pass only
-const stats = await page.evaluate(async () => {
-  const r = window.__THREE_RENDERER__
-  if (!r) return null
-  r.info.autoReset = false
-  await new Promise((res) => requestAnimationFrame(res))
-  r.info.reset()
-  await new Promise((res) => requestAnimationFrame(res))
-  const out = { calls: r.info.render.calls, triangles: r.info.render.triangles }
-  r.info.autoReset = true
-  return out
-})
 
 // Contact sheet: render the captures into a grid and screenshot it
 const imgs = POSES.map(([name]) => {
@@ -83,7 +87,10 @@ await sheet.setContent(`<style>
 await sheet.screenshot({ path: join(outDir, 'contact.png'), fullPage: true })
 
 console.log(`\ncontact sheet: ${join(outDir, 'contact.png')}`)
-if (stats) console.log(`render stats (last frame): ${stats.calls} draw calls, ${stats.triangles} triangles`)
+if (perPose.length) {
+  const calls = perPose.map((p) => p.calls)
+  console.log(`draw calls per pose: min ${Math.min(...calls)}, max ${Math.max(...calls)}, avg ${Math.round(calls.reduce((a, b) => a + b, 0) / calls.length)}`)
+}
 if (errors.length) {
   console.log(`\n${errors.length} page errors:`)
   for (const e of [...new Set(errors)].slice(0, 15)) console.log(' -', e.slice(0, 300))

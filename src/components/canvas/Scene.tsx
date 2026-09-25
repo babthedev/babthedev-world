@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense } from 'react'
+import { Suspense, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { EffectComposer, SMAA } from '@react-three/postprocessing'
 import World from './World'
@@ -15,11 +15,11 @@ import PaintedSky from './PaintedSky'
 import SunRig from './SunRig'
 import { useWorldStore } from '@/store/useWorldStore'
 import { FEATURE_FLAGS } from '@/lib/featureFlags'
+import { QUALITY, getQualityTier } from '@/lib/quality'
 import {
   CAMERA_FOV,
   CAMERA_NEAR,
   CAMERA_FAR,
-  MAX_PIXEL_RATIO,
   FOG_NEAR,
   FOG_FAR,
   AMBIENT_INTENSITY,
@@ -29,6 +29,7 @@ import {
 export default function Scene() {
   const isTabHidden = useWorldStore((s) => s.isTabHidden)
   const setContextLost = useWorldStore((s) => s.setContextLost)
+  const quality = useMemo(() => QUALITY[getQualityTier()], [])
 
   return (
     <Canvas
@@ -69,7 +70,7 @@ export default function Scene() {
       }}
       dpr={
         typeof window !== 'undefined'
-          ? Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO)
+          ? Math.min(window.devicePixelRatio, quality.maxPixelRatio)
           : 1
       }
     >
@@ -83,7 +84,7 @@ export default function Scene() {
           follows the visitor so every district gets the same light.
       ──────────────────────────────────────────────────── */}
       <ambientLight intensity={AMBIENT_INTENSITY} color="#FFFFFF" />
-      <SunRig />
+      <SunRig mapSize={quality.shadowMapSize} />
 
       {/* ── CAMERA ───────────────────────────────────── */}
       <CameraController />
@@ -106,11 +107,11 @@ export default function Scene() {
           then ink lines (with 12fps boil), grain, and SMAA last so the
           lines themselves are anti-aliased.
       ──────────────────────────────────────────────────── */}
-      <EffectComposer multisampling={0} enableNormalPass>
+      <EffectComposer multisampling={0} enableNormalPass={quality.normalPass}>
         <Monochrome />
         <SobelOutline />
         <PaperGrain />
-        <SMAA />
+        {quality.smaa ? <SMAA /> : <></>}
       </EffectComposer>
     </Canvas>
   )

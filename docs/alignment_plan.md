@@ -1620,4 +1620,35 @@ $\vec{V} = \vec{V}_{\text{cam}} - (\vec{V}_{\text{cam}} \cdot \hat{N})\hat{N}$
 **Rationale:**
 - Establishes a complete, uncompromising technical and artistic blueprint covering every facet of BabWorld without ambiguity
 
+---
+
+## Amendments — Messenger visual overhaul (P0–P7)
+
+The original decisions above stand except where amended here. Each amendment
+records what was built and why it deviates. See also `docs/ANIMATIONS.md`.
+
+| Q | Was | Now | Why |
+|---|---|---|---|
+| Q9 | Warm monochrome from hand-picked greys | Monochrome grade pass (luminance → levels → tone curve → posterise → warm ink/paper ramp) | Every texture can stay as authored; the frame is greyscale by construction |
+| Q10 | 4-step toon gradient | 2 tones (lit / shade) plus a painted shadow layer | Messenger's flat lit/shade split; variation comes from brush strokes, not bands |
+| Q11 | Camera chases the facing | Camera **heading** holds while moving and only follows the *forward* part of input, gently; idle recentres. Movement is relative to the heading, not the view vector | Movement is camera-relative, so a camera that chases movement (or carries dialogue orbit) makes the visitor spiral |
+| Q12 | Static low-angle sun | Sun follows the visitor at a fixed tilt above their local horizon; ±18m shadow frustum, texel-snapped | A fixed world sun lights every district differently and leaves half the planet in night |
+| Q13 | Fog 15/40, paper colour | Fog 45/120, matched to the sky | Messenger barely fogs |
+| Q14 | Subtle gradient dome | Flat mid-grey sky with painted, outlined clouds | Horizon separation |
+| Q16 | Optimised GLB characters | VRM kept, slimmed 47MB → 8MB by `pnpm assets:vrm` (sparse morph targets, palette textures, meshopt) | VRM extensions drive expressions and spring bones; gltf-transform drops them |
+| Q22 | Kenney as scaffolding, custom later | Unchanged, but restyled: procedural streets, frontages, clutter, painted layer. **Custom modular kit (P6) still pending**, it needs authored assets | The remaining gap to Messenger is architecture |
+| Q24 | 3–5 trees | 3 trees + ~57 tufts, instanced | Sparse and stylised |
+| Q40, Q68 | Paper cranes and drifting flecks | Off by default behind `NEXT_PUBLIC_AMBIENT_PAPER` | They read as rendering artefacts against a dense street; revisit as rare flyovers |
+| Q41 | 3 HUD elements | 5 light tiles (photo, map, contact, colophon, mute) plus a bottom-left district title card | The features already existed and are used; restyled rather than removed |
+| Q53 | Ghosting characters | Implemented with collision groups | The guide's capsule was shoving the visitor sideways |
+| Q57 | Two-tier post stack | Implemented: `high` (2048 shadows, normal-buffer outlines, SMAA, dpr 1.5) and `low` (1024, depth-only outlines, no SMAA, dpr 1). Auto by cores, memory and *coarse pointer*; `?quality=` forces | Measured: about 41% fewer draw calls, 40% fewer triangles |
+
+### Known gaps
+
+- **Not indistinguishable from Messenger at thumbnail size.** Tone and finish converge (greyscale median 157 vs 151, near-white 6% vs 5%), but the world is still a 25m-radius sphere with a visible curved horizon, sparse clutter and boxy Kenney architecture.
+- **Draw calls:** high tier 265–399 per view, low tier 155–234. The cost is character submeshes (about 15 per VRM, drawn in three passes); reducing it means merged or atlased character materials.
+- `joe.vrm` is a byte-identical copy of `visitor.vrm` (placeholder).
+- Standalone Kenney props in `worldCoordinates.ts` still render at 1× toy scale and un-instanced.
+- Symbol glyphs in world text (arrows in the hub signs) make troika fetch a fallback font from a CDN at runtime.
+
 <!-- 150 Questions Alignment Completed -->

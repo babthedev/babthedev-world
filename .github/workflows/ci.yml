@@ -37,6 +37,9 @@ jobs:
       - name: Run Spherical Math Unit Tests
         run: pnpm test
 
+      - name: Enforce Asset Budget (world assets and character models)
+        run: pnpm assets:budget
+
       - name: TypeScript Typecheck
         run: pnpm exec tsc --noEmit
 

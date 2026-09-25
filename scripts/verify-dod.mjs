@@ -88,11 +88,11 @@ check('Q116: Catmull-Rom tour pathing',
 
 // ── BATCH 11-15: Rendering & Shaders ─────────────────────
 console.log('\n▸ Rendering Pipeline')
-check('Q66: Toon gradient [80,150,210,255]',
+check('Q66: Two-tone toon gradient',
   fileContains('src/lib/constants.ts', 'TOON_GRADIENT_STEPS'))
 check('Q67: Depth+normal Sobel outline',
   srcContains('Sobel') || srcContains('sobel'))
-check('Q68: Gradient sky dome',
+check('Q68: Painted sky dome',
   srcContains('SkyDome') || srcContains('skyDome') || srcContains('PaintedSky'))
 check('Q131: Emissive lamp materials',
   srcContains('emissive'))
@@ -220,6 +220,38 @@ check('Building models present',
   fileExists('public/kenney/building-a.glb'))
 
 // ── SUMMARY ─────────────────────────────────────────────
+// ── VISUAL OVERHAUL (Messenger-style, P0–P7) ──────────────
+console.log('\n▸ Visual Overhaul')
+check('P1: monochrome grade + tone curve pass',
+  fileContains('src/components/canvas/Monochrome.tsx', 'gamma') && fileContains('src/lib/constants.ts', 'MONO_GAMMA'))
+check('P1: linear-depth outline with 12fps line boil',
+  fileContains('src/components/canvas/SobelOutline.tsx', 'getViewZ') && fileContains('src/components/canvas/SobelOutline.tsx', 'BOIL_HZ'))
+check('P1: sun follows the visitor (no night side)',
+  fileExists('src/components/canvas/SunRig.tsx') && srcContains('<SunRig'))
+check('P3: procedural street kit is mounted',
+  fileContains('src/components/canvas/World.tsx', 'StreetKit'))
+check('P4: VRM diet script + enforced character budget',
+  fileExists('scripts/optimize-vrm.mjs') && fileContains('scripts/check-asset-budget.mjs', 'VRM_BUDGET_BYTES'))
+check('P4: VRMA runtime with procedural fallback',
+  fileExists('src/hooks/useVrmaPlayer.ts') && fileContains('src/components/canvas/CharacterModel.tsx', 'proceduralWalk'))
+check('P5: painted layer (world-space shader) applied to buildings',
+  fileExists('src/lib/paint.ts') && fileContains('src/components/canvas/StreetKit.tsx', 'paint('))
+check('P5: glyph signage and foliage',
+  fileExists('src/lib/glyphs.ts') && fileContains('src/components/canvas/StreetKit.tsx', 'Foliage'))
+check('P7: quality tiers (Q57)',
+  fileExists('src/lib/quality.ts') && fileContains('src/components/canvas/Scene.tsx', 'getQualityTier'))
+check('Movement: planet has no auto-generated cuboid collider',
+  fileContains('src/components/canvas/World.tsx', 'colliders={false}'))
+check('Movement: keyboard input is never gated on touch capability',
+  !fileContains('src/components/canvas/VisitorController.tsx', 'else if (isMobile)'))
+check('Movement: facing is a world-space vector (no yaw-angle drift)',
+  fileContains('src/lib/sphereMath.ts', 'orientFromFacing') && !srcContains('facingAngle'))
+check('Q53: characters ghost through each other',
+  fileContains('src/components/canvas/VisitorController.tsx', 'interactionGroups') &&
+  fileContains('src/components/canvas/AbdulrahmanController.tsx', 'interactionGroups'))
+check('Regression tests cover movement and the low tier',
+  fileContains('tests/visual.spec.ts', 'Visitor movement') && fileContains('tests/visual.spec.ts', 'quality=low'))
+
 console.log('\n━━━ RESULTS ━━━')
 console.log(`  Passed: ${passed}`)
 console.log(`  Failed: ${failed}`)

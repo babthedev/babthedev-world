@@ -7,7 +7,6 @@ import { useWorldStore } from '@/store/useWorldStore'
 import {
   DIRECTIONAL_INTENSITY,
   SHADOW_EXTENT,
-  SHADOW_MAP_SIZE,
   SUN_DISTANCE,
   SUN_TILT,
 } from '@/lib/constants'
@@ -33,14 +32,14 @@ const _up = new Vector3()
  * shadow frustum follows too — ±18m at 2048px is ~1.8cm per texel, which
  * keeps cast shadows as hard-edged as Messenger's.
  */
-export default function SunRig() {
+export default function SunRig({ mapSize }: { mapSize: number }) {
   const lightRef = useRef<DirectionalLight>(null)
-  const texel = (SHADOW_EXTENT * 2) / SHADOW_MAP_SIZE
+  const texel = (SHADOW_EXTENT * 2) / mapSize
 
   const shadowProps = useMemo(
     () => ({
-      'shadow-mapSize-width': SHADOW_MAP_SIZE,
-      'shadow-mapSize-height': SHADOW_MAP_SIZE,
+      'shadow-mapSize-width': mapSize,
+      'shadow-mapSize-height': mapSize,
       'shadow-camera-left': -SHADOW_EXTENT,
       'shadow-camera-right': SHADOW_EXTENT,
       'shadow-camera-top': SHADOW_EXTENT,
@@ -50,7 +49,7 @@ export default function SunRig() {
       'shadow-bias': -0.0004,
       'shadow-normalBias': 0.03,
     }),
-    []
+    [mapSize]
   )
 
   useFrame(() => {

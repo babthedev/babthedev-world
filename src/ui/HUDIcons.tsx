@@ -23,6 +23,14 @@ function getAudioContext(): { ctx: AudioContext; gain: GainNode } {
   return { ctx: audioCtx, gain: masterGain }
 }
 
+// HUD tiles: light paper squares with a hard offset shadow (Messenger-style),
+// inverting to ink on hover and pressing down on click. Icons use currentColor.
+const TILE =
+  'bg-[#F3F2ED] border-2 border-black flex items-center justify-center text-[#111] cursor-pointer ' +
+  'shadow-[4px_4px_0px_0px_#111] transition-[background-color,color,transform,box-shadow] ' +
+  'hover:bg-[#111] hover:text-[#F3F2ED] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_#111] ' +
+  'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111]'
+
 export default function HUDIcons() {
   const [mapOpen, setMapOpen] = useState(false)
   const [muted, setMutedState] = useState(false)
@@ -201,7 +209,7 @@ export default function HUDIcons() {
           disabled={isCapturing}
           aria-label="Photo Mode / Clean Capture (P)"
           title="Photo Mode / Capture 2x Snapshot (P)"
-          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+          className={TILE}
           style={{ width: HUD_ICON_SIZE, height: HUD_ICON_SIZE }}
         >
           <CameraIcon />
@@ -210,7 +218,7 @@ export default function HUDIcons() {
         <button
           onClick={toggleMap}
           aria-label="Open map"
-          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+          className={TILE}
           style={{ width: HUD_ICON_SIZE, height: HUD_ICON_SIZE }}
         >
           <MapIcon />
@@ -219,7 +227,7 @@ export default function HUDIcons() {
         <button
           onClick={openContact}
           aria-label="Send letter / Contact Abdulrahman"
-          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+          className={TILE}
           style={{ width: HUD_ICON_SIZE, height: HUD_ICON_SIZE }}
         >
           <MailIcon />
@@ -231,7 +239,7 @@ export default function HUDIcons() {
             setActivePanel('colophon')
           }}
           aria-label="Colophon and credits"
-          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+          className={TILE}
           style={{ width: HUD_ICON_SIZE, height: HUD_ICON_SIZE }}
         >
           <InfoIcon />
@@ -240,7 +248,7 @@ export default function HUDIcons() {
         <button
           onClick={toggleMute}
           aria-label={muted ? 'Unmute' : 'Mute'}
-          className="bg-black border-2 border-white flex items-center justify-center text-white hover:bg-white hover:text-black transition-colors shadow-[2px_2px_0px_0px_rgba(0,0,0,1)] cursor-pointer"
+          className={TILE}
           style={{ width: HUD_ICON_SIZE, height: HUD_ICON_SIZE }}
         >
           {muted ? <MuteIcon /> : <SoundIcon />}

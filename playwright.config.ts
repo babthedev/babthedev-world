@@ -29,7 +29,9 @@ export default defineConfig({
   projects: [
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'] },
+      // PLAYWRIGHT_CHANNEL=chrome runs against an installed Chrome instead of
+      // Playwright's bundled Chromium (no `playwright install` needed locally).
+      use: { ...devices['Desktop Chrome'], channel: process.env.PLAYWRIGHT_CHANNEL || undefined },
     },
   ],
 })
