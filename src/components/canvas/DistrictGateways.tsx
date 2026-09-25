@@ -5,6 +5,7 @@ import { Text, useGLTF } from '@react-three/drei'
 import { Mesh, MeshToonMaterial, Texture } from 'three'
 import { flatToSphere } from '@/lib/surfacePlacement'
 import { FEATURE_FLAGS } from '@/lib/featureFlags'
+import { WORLD_FONT } from '@/lib/worldFont'
 
 interface DistrictGatewaysProps {
   gradientMap: Texture
@@ -79,6 +80,7 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
 
         {/* Q87: SDF Signage Text */}
         <Text
+        font={WORLD_FONT}
           position={[0, 4.2, 0.42]}
           fontSize={0.32}
           color="#F2F1EC"
@@ -89,6 +91,7 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
           THE LIBRARY
         </Text>
         <Text
+        font={WORLD_FONT}
           position={[0, 3.8, 0.42]}
           fontSize={0.14}
           color="#A0A0A0"
@@ -122,6 +125,7 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
 
         {/* SDF Signage */}
         <Text
+        font={WORLD_FONT}
           position={[-0.38, 4.0, 0]}
           rotation={[0, -Math.PI / 2, 0]}
           fontSize={0.3}
@@ -161,6 +165,7 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
             </mesh>
 
             <Text
+        font={WORLD_FONT}
               position={[0, 2.3, 0.08]}
               fontSize={0.24}
               color="#FFDD55"
@@ -171,6 +176,7 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
               ORYZON
             </Text>
             <Text
+        font={WORLD_FONT}
               position={[0, 2.05, 0.08]}
               fontSize={0.12}
               color="#FF5555"
@@ -188,6 +194,7 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
               <boxGeometry args={[4.4, 0.7, 0.1]} />
             </mesh>
             <Text
+        font={WORLD_FONT}
               position={[0, 2.3, 0.08]}
               fontSize={0.24}
               color="#FAF9F5"
@@ -198,6 +205,7 @@ export default function DistrictGateways({ gradientMap }: DistrictGatewaysProps)
               ORYZON
             </Text>
             <Text
+        font={WORLD_FONT}
               position={[0, 2.05, 0.08]}
               fontSize={0.12}
               color="#88FF88"

@@ -6,6 +6,7 @@ import { Text } from '@react-three/drei'
 import { Group, Mesh, MeshToonMaterial, Texture, Vector3 } from 'three'
 import { flatToSphere } from '@/lib/surfacePlacement'
 import { useWorldStore } from '@/store/useWorldStore'
+import { WORLD_FONT } from '@/lib/worldFont'
 
 interface PhysicalPropsProps {
   gradientMap: Texture
@@ -144,6 +145,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
         </mesh>
         {/* SDF spine title */}
         <Text
+        font={WORLD_FONT}
           position={[-0.26, 0.45, 0]}
           rotation={[0, -Math.PI / 2, 0]}
           fontSize={0.06}
@@ -165,6 +167,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           <boxGeometry args={[0.46, 0.66, 0.1]} />
         </mesh>
         <Text
+        font={WORLD_FONT}
           position={[-0.26, 0.45, 0]}
           rotation={[0, -Math.PI / 2, 0]}
           fontSize={0.06}
@@ -189,6 +192,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           <octahedronGeometry args={[0.26, 0]} />
         </mesh>
         <Text
+        font={WORLD_FONT}
           position={[0, 0.6, 0.68]}
           fontSize={0.12}
           color="#FFFFFF"
@@ -209,6 +213,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           <icosahedronGeometry args={[0.24, 0]} />
         </mesh>
         <Text
+        font={WORLD_FONT}
           position={[0, 0.6, 0.68]}
           fontSize={0.12}
           color="#FFFFFF"
@@ -237,6 +242,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
         </mesh>
         {/* Phosphor Text */}
         <Text
+        font={WORLD_FONT}
           position={[0, 1.08, 0.27]}
           fontSize={0.07}
           color="#44FF44"
@@ -247,6 +253,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           {'> ARCHIVE'}
         </Text>
         <Text
+        font={WORLD_FONT}
           position={[0, 0.98, 0.27]}
           fontSize={0.045}
           color="#22AA22"
@@ -278,6 +285,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
         </mesh>
         {/* SDF Signage */}
         <Text
+        font={WORLD_FONT}
           position={[0, 1.34, 0]}
           fontSize={0.07}
           color="#FAF9F5"
@@ -288,6 +296,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           MAILBOX
         </Text>
         <Text
+        font={WORLD_FONT}
           position={[0, 0.92, 0.295]}
           fontSize={0.04}
           color="#FAF9F5"
@@ -314,6 +323,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
         </mesh>
         {/* SDF Chalk lettering */}
         <Text
+        font={WORLD_FONT}
           position={[0, 0.98, 0.05]}
           fontSize={0.075}
           color="#FFFFFF"
@@ -324,6 +334,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           RESUME / CV
         </Text>
         <Text
+        font={WORLD_FONT}
           position={[0, 0.85, 0.05]}
           fontSize={0.045}
           color="#CCCCCC"
@@ -334,6 +345,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           ABDULRAHMAN
         </Text>
         <Text
+        font={WORLD_FONT}
           position={[0, 0.74, 0.05]}
           fontSize={0.038}
           color="#999999"
@@ -344,6 +356,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           SYSTEMS & 3D WEB
         </Text>
         <Text
+        font={WORLD_FONT}
           position={[0, 0.58, 0.05]}
           fontSize={0.042}
           color="#FFFFFF"
@@ -381,6 +394,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
         </mesh>
         {/* SDF Signage */}
         <Text
+        font={WORLD_FONT}
           position={[0, 1.34, 0]}
           fontSize={0.07}
           color="#FAF9F5"
@@ -391,6 +405,7 @@ export default function PhysicalProps({ gradientMap }: PhysicalPropsProps) {
           CAFE GUESTBOOK
         </Text>
         <Text
+        font={WORLD_FONT}
           position={[0, 0.88, 0.05]}
           fontSize={0.042}
           color="#FAF9F5"
