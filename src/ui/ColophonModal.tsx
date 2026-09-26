@@ -130,6 +130,20 @@ export default function ColophonModal() {
             </p>
           </div>
 
+          {/* Read as text */}
+          <div>
+            <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-black mb-1.5 pb-1 border-b border-black/15">
+              6. Without the 3D world
+            </h3>
+            <p>
+              Everything here is also{' '}
+              <a href="/reader" className="underline decoration-2 underline-offset-2 font-bold hover:bg-black hover:text-white">
+                readable as plain text
+              </a>
+              , for slower devices, screen readers, or anyone who would rather just read.
+            </p>
+          </div>
+
           {/* Copyright */}
           <div className="pt-4 border-t-2 border-black flex items-center justify-between font-mono text-[10px] text-black/50">
             <span>© 2026 Abdulrahman (BabTheDev)</span>

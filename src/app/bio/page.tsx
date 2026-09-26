@@ -1,3 +1,16 @@
+import type { Metadata } from 'next'
+
+export const metadata: Metadata = {
+  title: 'Welcome Terrace',
+  description: 'Who Abdulrahman Bello is, what he works on, and how to get in touch.',
+  alternates: { canonical: '/bio' },
+  openGraph: {
+    title: 'Welcome Terrace',
+    description: 'Who Abdulrahman Bello is, what he works on, and how to get in touch.',
+    url: '/bio',
+  },
+}
+
 import { getMdxContent } from '@/lib/mdx'
 
 export default function BioPage() {

@@ -19,6 +19,7 @@ import GuestbookModal from '@/ui/GuestbookModal'
 import PassportStampToast from '@/ui/PassportStampToast'
 import ColophonModal from '@/ui/ColophonModal'
 import WebGLErrorBoundary from '@/components/WebGLErrorBoundary'
+import { usePathname } from 'next/navigation'
 import { useTourLogic } from '@/hooks/useTourLogic'
 import { usePageVisibility } from '@/hooks/usePageVisibility'
 import { useAmbience } from '@/hooks/useAmbience'
@@ -26,12 +27,16 @@ import { useMouseLook } from '@/hooks/useMouseLook'
 import LookHint from '@/ui/LookHint'
 
 export default function GlobalCanvas() {
+  // The reader route is the plain-text version of the site: no world over the top of it
+  const pathname = usePathname()
   // Global tour-resume logic — lives here since this component
   // is always mounted for the lifetime of the app
   useTourLogic()
   usePageVisibility()
   useAmbience()
   useMouseLook()
+
+  if (pathname === '/reader') return null
 
 
   return (

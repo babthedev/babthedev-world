@@ -33,6 +33,30 @@ body {
   height: 100%;
 }
 
+/* The world fills the viewport and must never scroll. A document page has to.
+   Kept in its own rule, with no :has() in the selector list: the CSS build drops a
+   whole rule when any selector in it is unsupported by the browser targets. */
+html.is-document,
+body.is-document {
+  overflow: visible;
+  height: auto;
+  min-height: 100dvh;
+}
+html.is-document main {
+  height: auto;
+}
+
+/* Same thing before the class lands, for browsers that support :has(). */
+html:has(#reader-page),
+body:has(#reader-page) {
+  overflow: visible;
+  height: auto;
+  min-height: 100dvh;
+}
+html:has(#reader-page) main {
+  height: auto;
+}
+
 /* Custom Brutalist Scrollbar */
 ::-webkit-scrollbar {
   width: 12px;

@@ -48,7 +48,7 @@ export default class WebGLErrorBoundary extends Component<Props, State> {
               3D Display Suspended
             </h2>
             <p className="font-mono text-xs text-black/70 leading-relaxed mb-6">
-              Your browser or graphics hardware encountered an issue rendering the 3D spherical world.
+              Your browser or graphics hardware could not render the 3D world. Everything here is also available to read as text.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-3 font-mono text-xs">
@@ -59,10 +59,10 @@ export default class WebGLErrorBoundary extends Component<Props, State> {
                 RELOAD WORLD
               </button>
               <a
-                href="/essays"
+                href="/reader"
                 className="flex-1 border-2 border-black text-center py-2.5 px-4 hover:bg-black hover:text-white transition-colors"
               >
-                2D ESSAYS
+                READ AS TEXT
               </a>
             </div>
           </div>

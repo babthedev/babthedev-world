@@ -430,3 +430,72 @@ test.describe('Desktop', () => {
     await expect(page.getByRole('dialog', { name: 'World map' })).toBeHidden()
   })
 })
+
+/**
+ * What a shared link and a search engine see, and the way out for anyone whose
+ * device cannot run the world. All of it is server-rendered, so no WebGL is needed.
+ */
+test.describe('Launch readiness', () => {
+  test('a shared link carries a title, description and share card', async ({ page }) => {
+    await page.goto('/')
+    const content = (selector: string) => page.locator(selector).first().getAttribute('content')
+
+    await expect(page).toHaveTitle(/Abdulrahman/)
+    expect(await content('meta[name="description"]')).toMatch(/portfolio/i)
+    expect(await content('meta[property="og:title"]')).toBeTruthy()
+    expect(await content('meta[property="og:description"]')).toBeTruthy()
+    expect(await content('meta[name="twitter:card"]')).toBe('summary_large_image')
+
+    // The card itself must exist and be the size every platform crops to
+    const image = await content('meta[property="og:image"]')
+    expect(image, 'og:image is declared').toBeTruthy()
+    expect(await content('meta[property="og:image:width"]')).toBe('1200')
+    expect(await content('meta[property="og:image:height"]')).toBe('630')
+    const card = await page.request.get(new URL(image!).pathname + new URL(image!).search)
+    expect(card.ok(), 'the share card renders').toBeTruthy()
+    expect(card.headers()['content-type']).toContain('image/png')
+
+    // Search engines are told who this is
+    const jsonLd = await page.locator('script[type="application/ld+json"]').first().textContent()
+    expect(jsonLd, 'structured data is present').toContain('"Person"')
+  })
+
+  test('robots and sitemap point search engines at every district', async ({ page }) => {
+    const robots = await page.request.get('/robots.txt')
+    expect(robots.ok()).toBeTruthy()
+    expect(await robots.text()).toContain('Sitemap:')
+
+    const sitemap = await page.request.get('/sitemap.xml')
+    expect(sitemap.ok()).toBeTruthy()
+    const xml = await sitemap.text()
+    for (const route of ['/projects', '/essays', '/bio']) {
+      expect(xml, `sitemap lists ${route}`).toContain(route)
+    }
+  })
+
+  test('the reader page shows the real writing, scrolls, and loads no 3D world', async ({ page }) => {
+    await page.goto('/reader')
+    await expect(page.getByRole('heading', { level: 1 })).toContainText('Abdulrahman')
+
+    // Real prose, converted from markdown rather than printed as source
+    const articles = page.locator('article')
+    expect(await articles.count(), 'every piece of writing is on the page').toBeGreaterThan(3)
+    await expect(page.locator('article h2, article h3').first()).toBeVisible()
+    expect(await page.locator('body').innerText(), 'markdown was rendered, not shown raw').not.toContain('**')
+
+    // The world is not over the top of it, and the page can be read to the end
+    expect(await page.locator('canvas').count(), 'no 3D canvas on the reader').toBe(0)
+    const height = await page.evaluate(() => document.documentElement.scrollHeight)
+    expect(height, 'there is more than one screen of content').toBeGreaterThan(1500)
+    await page.evaluate(() => window.scrollTo(0, 2000))
+    expect(await page.evaluate(() => window.scrollY), 'the page scrolls').toBeGreaterThan(1000)
+  })
+
+  test('a keyboard can leave the 3D world on the first tab', async ({ page }) => {
+    await page.goto('/')
+    await page.keyboard.press('Tab')
+    const focused = page.locator(':focus')
+    await expect(focused).toBeVisible()
+    await expect(focused).toHaveAttribute('href', '/reader')
+  })
+})

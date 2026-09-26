@@ -18,9 +18,16 @@ const ALLOWED_EVENTS = new Set([
   'letter_sent',
 ])
 
+/** What a beacon may carry. Anything else in the body is ignored. */
+interface TelemetryBeacon {
+  event?: string
+  properties?: Record<string, unknown>
+  timestamp?: number
+}
+
 export async function POST(request: NextRequest) {
   try {
-    let payload: any = null
+    let payload: TelemetryBeacon | null = null
     const contentType = request.headers.get('content-type') || ''
 
     if (contentType.includes('application/json')) {
