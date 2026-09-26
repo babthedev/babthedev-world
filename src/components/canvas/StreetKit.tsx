@@ -52,10 +52,10 @@ import { paint } from '@/lib/paint'
 // final frame is too. Values are chosen so neighbouring surfaces
 // separate clearly once flattened to luminance.
 const TONE = {
-  asphalt: '#77756F',
+  asphalt: '#74726D',
   line: '#F6F5F0',
-  curb: '#D2D0C8',
-  plaza: '#BDBBB3',
+  curb: '#EEEDE8',
+  plaza: '#DAD8D1',
 }
 
 const PROP_STYLE: Record<PropKind, { color: string; geo: 'box' | 'cyl' | 'disc' | 'plane' | 'blob' }> = {
@@ -89,25 +89,51 @@ const GEOMETRIES = {
 }
 
 // ── STRIP GEOMETRY ─────────────────────────────────────
+// A strip is a ribbon between an inner and an outer edge that both lie on the planet.
+// A single flat quad across a 6 m road would cut a chord under the curved surface, sagging
+// about 18 cm at its middle, so the planet would poke through the asphalt everywhere but at
+// the edges. The ribbon is therefore cut into narrow slices across its width, every point of
+// which is put back on the sphere (interpolating the height between the two edges).
+const MAX_SLICE_WIDTH = 0.6
+
+function acrossStrip(inner: Vector3, outer: Vector3, f: number, out: Vector3): Vector3 {
+  out.lerpVectors(inner, outer, f)
+  const radius = inner.length() + (outer.length() - inner.length()) * f
+  return out.setLength(radius)
+}
+
 function stripGeometry(runs: StripRun[]): BufferGeometry {
   const pos: number[] = []
   const push = (v: Vector3) => pos.push(v.x, v.y, v.z)
   const e1 = new Vector3()
   const e2 = new Vector3()
   const n = new Vector3()
+  const a0 = new Vector3()
+  const a1 = new Vector3()
+  const b0 = new Vector3()
+  const b1 = new Vector3()
   for (const run of runs) {
     for (let i = 0; i < run.points.length - 1; i++) {
       const a = run.points[i]
       const b = run.points[i + 1]
-      // Keep every quad facing away from the planet
-      e1.subVectors(a.outer, a.inner)
-      e2.subVectors(b.inner, a.inner)
-      n.crossVectors(e1, e2)
-      const flip = n.dot(a.inner) < 0
-      const [p0, p1] = flip ? [a.outer, a.inner] : [a.inner, a.outer]
-      const [p2, p3] = flip ? [b.outer, b.inner] : [b.inner, b.outer]
-      push(p0); push(p1); push(p2)
-      push(p1); push(p3); push(p2)
+      const slices = Math.max(1, Math.ceil(a.inner.distanceTo(a.outer) / MAX_SLICE_WIDTH))
+      for (let k = 0; k < slices; k++) {
+        const f0 = k / slices
+        const f1 = (k + 1) / slices
+        acrossStrip(a.inner, a.outer, f0, a0)
+        acrossStrip(a.inner, a.outer, f1, a1)
+        acrossStrip(b.inner, b.outer, f0, b0)
+        acrossStrip(b.inner, b.outer, f1, b1)
+        // Keep every quad facing away from the planet
+        e1.subVectors(a1, a0)
+        e2.subVectors(b0, a0)
+        n.crossVectors(e1, e2)
+        const flip = n.dot(a0) < 0
+        const [p0, p1] = flip ? [a1, a0] : [a0, a1]
+        const [p2, p3] = flip ? [b1, b0] : [b0, b1]
+        push(p0); push(p1); push(p2)
+        push(p1); push(p3); push(p2)
+      }
     }
   }
   const g = new BufferGeometry()
@@ -179,7 +205,7 @@ function Buildings({ gradientMap }: { gradientMap: Texture }) {
       })
     })
     // Painted layer: brush strokes in the shade, dashed hatching on the walls
-    const material = paint(new MeshToonMaterial({ map: colormap, color: '#D0D0CB', gradientMap }), { shadow: 0.42, hatch: 0.3 })
+    const material = paint(new MeshToonMaterial({ map: colormap, color: '#D0D0CB', gradientMap }), { shadow: 0.16, hatch: 0.3 })
     return BUILDING_MODELS.map((model) => ({
       model,
       geometry: geoByModel.get(model)!,
@@ -281,10 +307,10 @@ function RoadSurfaces({ gradientMap }: { gradientMap: Texture }) {
       curbFace: stripGeometry(CURB_FACE_RUNS),
       crosswalks: quadGeometry(CROSSWALK_QUADS),
       materials: {
-        asphalt: paint(mat(TONE.asphalt, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), { shadow: 0.4, blotch: 0.24 }),
+        asphalt: paint(mat(TONE.asphalt, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), { shadow: 0.2, blotch: 0.1 }),
         line: mat(TONE.line, { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -2 }),
         curb: paint(mat(TONE.curb, { side: DoubleSide }), { shadow: 0.3 }),
-        plaza: paint(mat(TONE.plaza, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), { shadow: 0.4, blotch: 0.2 }),
+        plaza: paint(mat(TONE.plaza, { polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), { shadow: 0.2, blotch: 0.08 }),
       },
     }
   }, [gradientMap])

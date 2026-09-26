@@ -63,12 +63,16 @@ export const OUTLINE_BOIL_PX = 1.1            // max line wobble, pixels
 // --- MONOCHROME GRADE (perceptual 0..1) ---
 export const MONO_BLACK = 0.04
 export const MONO_WHITE = 0.97
-// Tone curve applied after the levels. >1 pulls the midtones down: Messenger's
-// frames sit around a median of ~150/255 with over half the pixels in the
-// mid-tones, where a linear grade of our lit walls landed near 200 with ~8%.
-export const MONO_GAMMA = 2.1
+// Tone curve applied after the levels. The first calibration (gamma 2.1) matched
+// Messenger's histogram: median ~150/255, over half the pixels in the mid-tones.
+// That reads as muddy. The grade is now a light gamma plus an S-curve (see
+// MONO_CONTRAST), so lights are clean paper white, darks are deep ink, and the
+// middle is thin.
+export const MONO_GAMMA = 1.3
 export const MONO_STEPS = 7                   // value bands
-export const MONO_POSTERIZE = 0.55            // 0 = smooth, 1 = hard bands
+export const MONO_POSTERIZE = 0.75            // 0 = smooth, 1 = hard bands
+export const MONO_CONTRAST = 1.7              // S-curve strength: >1 separates darks from lights, 1 = off
+export const MONO_PIVOT = 0.55                // where the S-curve crosses over
 
 // --- WORLD / PAPER PALETTE ---
 export const PAPER_BACKGROUND = '#F2F1EC'     // slightly warm off-white, not pure white
@@ -102,17 +106,17 @@ export const FOG_FAR = 120
 // Three's lights carry a 1/π Lambert factor, so ambient + sun ≈ π keeps a
 // lit albedo at its authored value; ambient alone lands shadows at ~60%
 // of the lit tone in display (sRGB) terms.
-// Messenger's shade is ~70% of the lit tone (soft, painted shadows), not the
-// ~40% a 1:2 ambient:sun split gives once the tone curve is applied.
-export const AMBIENT_INTENSITY = 1.5
-export const DIRECTIONAL_INTENSITY = 1.75
+// Shade sits near 45% of the lit tone after the curve: a clear step from light to
+// dark, so planes separate. (It was ~70% when matching Messenger's soft shade.)
+export const AMBIENT_INTENSITY = 1.0
+export const DIRECTIONAL_INTENSITY = 2.25
 export const SUN_TILT = 1.25                  // tangent lean; min sun elevation = atan(1/tilt) ≈ 39°
 export const SUN_DISTANCE = 40
 export const SHADOW_EXTENT = 18               // half-size of the shadow frustum around the visitor
 
 // --- SKY ---
-export const SKY_COLOR = '#BBBBB4'            // flat mid-light sky, darker than lit walls
-export const SKY_HORIZON_COLOR = '#CECDC7'
+export const SKY_COLOR = '#A9A8A2'            // soft mid-grey overhead, so white buildings read against it
+export const SKY_HORIZON_COLOR = '#D3D2CC'
 export const CLOUD_COLOR = '#F7F6F2'
 
 // --- UI ---
