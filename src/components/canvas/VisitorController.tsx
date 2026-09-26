@@ -11,6 +11,7 @@ import { useCharacterAnimations } from '@/hooks/useCharacterAnimations'
 import { WORLD_COORDINATES, DistrictName } from '@/lib/worldCoordinates'
 import { useTapToInteract } from '@/hooks/useMobileControls'
 import { touchInput } from '@/lib/touchInput'
+import { bodyMotion, squashScale, stepBodyMotion } from '@/lib/bodyMotion'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import {
   VISITOR_SPEED,
@@ -55,6 +56,8 @@ const _right = new Vector3()
 const _posVec = new Vector3()
 const _normal = new Vector3()
 const _currentVel = new Vector3()
+const _bodyRight = new Vector3()
+const _bodyTmp = new Vector3()
 const _qAlign = new Quaternion()
 const _greetDir = new Vector3()
 
@@ -65,11 +68,25 @@ const SPAWN_POS: [number, number, number] = [0, SPAWN_HEIGHT, 0]
 /** After a map jump, how long before the idle tour may resume */
 const TRAVEL_TOUR_HOLD_MS = 20_000
 
+const FEET_BELOW_CENTRE = CHARACTER_CAPSULE_HEIGHT / 2 + CHARACTER_CAPSULE_RADIUS
+
 export default function VisitorController() {
   const bodyRef = useRef<RapierRigidBody>(null)
   const { world } = useRapier()
   const modelRef = useRef<Group>(null)
+  // Inside modelRef: takes the lean and squash, pivoting at the feet
+  const leanRef = useRef<Group>(null)
+  const prevFacing = useRef(new Vector3(0, 0, 1))
   const [, get] = useKeyboardControls()
+
+  // Pressing E, or tapping the world, gives the visitor a little bounce of acknowledgement
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.code === 'KeyE' && !e.repeat) bodyMotion.kick(0.5)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [])
 
   // Tap on the world = Interact, reuses the same handler InteractiveProps listens for.
   // Walking is the virtual joystick (ui/VirtualJoystick), which writes to touchInput.
@@ -138,6 +155,7 @@ export default function VisitorController() {
       setTourActive(false)
       skipGreeting() // someone (a script or the map) is driving, not the intro
       cameraRig.snapFrames = 4
+      bodyMotion.kick(0.9) // land with a little give
       setPosition(spawn)
       // isTourActive is a render-time value, so for a frame or two after this the
       // tour branch can still steer the visitor toward the guide and overwrite the
@@ -360,6 +378,23 @@ export default function VisitorController() {
     orientFromFacing(_normal, facingRef.current, _qAlign)
     modelRef.current.quaternion.copy(_qAlign)
 
+    // ── WEIGHT: lean into motion and turns, dip on start/stop ─
+    if (leanRef.current) {
+      const dt = Math.min(delta, 0.05)
+      _bodyRight.crossVectors(facingRef.current, _normal).normalize()
+      const vf = _tangentVel.dot(facingRef.current)
+      const vr = _tangentVel.dot(_bodyRight)
+      _bodyTmp.crossVectors(prevFacing.current, facingRef.current)
+      const turned = Math.atan2(_normal.dot(_bodyTmp), prevFacing.current.dot(facingRef.current))
+      prevFacing.current.copy(facingRef.current)
+      // no lean while frozen for reading or the handshake
+      const still = isReading || greeting.active
+      stepBodyMotion(dt, still ? 0 : vf, still ? 0 : vr, still ? 0 : turned / Math.max(dt, 1e-3), VISITOR_SPEED)
+      const sc = squashScale(bodyMotion.squash.x)
+      leanRef.current.rotation.set(bodyMotion.pitch.x, 0, bodyMotion.roll.x)
+      leanRef.current.scale.set(sc.x, sc.y, sc.z)
+    }
+
     // ── ANIMATION STATE ─────────────────────────────────
     const nextAnim = updateFromVelocity(speed, currentSpeed) as 'idle' | 'walk'
     if (nextAnim !== animStateRef.current) {
@@ -404,12 +439,19 @@ export default function VisitorController() {
         collisionGroups={interactionGroups(1, [0])}
       />
       <group ref={modelRef}>
-        <CharacterModel
-          url="/visitor.vrm"
-          color={VISITOR_COLOR}
-          gradientMap={gradientMap as unknown as Texture}
-          animationName={animName}
-        />
+        {/* Pivot at the feet (capsule centre is CAPSULE_HEIGHT/2 + RADIUS above them), net offset zero */}
+        <group position={[0, -FEET_BELOW_CENTRE, 0]}>
+          <group ref={leanRef}>
+            <group position={[0, FEET_BELOW_CENTRE, 0]}>
+              <CharacterModel
+                url="/visitor.vrm"
+                color={VISITOR_COLOR}
+                gradientMap={gradientMap as unknown as Texture}
+                animationName={animName}
+              />
+            </group>
+          </group>
+        </group>
       </group>
     </RigidBody>
   )

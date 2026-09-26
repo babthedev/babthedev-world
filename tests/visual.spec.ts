@@ -6,6 +6,7 @@ interface DevWindow extends Window {
   __VISITOR__: () => { pos: number[]; vel: number[] }
   __TELEPORT__: (x: number, z: number, lookX: number, lookZ: number) => void
   __THREE_SCENE__: Object3D
+  __BODY__: { pitch: { x: number }; roll: { x: number }; squash: { x: number; v: number } }
   __GREETING__: { t: number; active: boolean; done: boolean; weight: number }
   __WORLD_STORE__: { getState: () => { position: number[]; abdulrahmanPosition: number[]; introComplete: boolean; setIntroComplete: (v: boolean) => void } }
 }
@@ -170,6 +171,25 @@ test.describe('Visitor movement', () => {
     const after = await sample()
     const changed = before.filter((v, i) => Math.abs(v - after[i]) > 60).length
     expect(changed, 'the map turned with the heading').toBeGreaterThan(20)
+  })
+
+  test('the visitor leans into a walk, and stands upright again when they stop', async ({ page }) => {
+    await ready(page)
+    const body = (page2: import('@playwright/test').Page) =>
+      page2.evaluate(() => (window as unknown as DevWindow).__BODY__.pitch.x)
+    await page.keyboard.down('KeyW')
+    await page.waitForFunction(() => (window as unknown as DevWindow).__BODY__.pitch.x > 0.03, undefined, { timeout: 90000, polling: 50 })
+    expect(await body(page), 'a forward walk leans forward, within a few degrees').toBeLessThan(0.11)
+    await page.keyboard.up('KeyW')
+    await page.waitForFunction(() => Math.abs((window as unknown as DevWindow).__BODY__.pitch.x) < 0.006, undefined, { timeout: 90000, polling: 50 })
+    // a press of E gives a small bounce that then settles
+    await page.keyboard.press('KeyE')
+    await page.waitForFunction(
+      () => Math.abs((window as unknown as DevWindow).__BODY__.squash.x) > 0.002,
+      undefined,
+      { timeout: 30000, polling: 20 }
+    )
+    await page.waitForFunction(() => Math.abs((window as unknown as DevWindow).__BODY__.squash.x) < 0.003, undefined, { timeout: 90000, polling: 50 })
   })
 
   test('D strafes to the right of W and the model faces its travel direction', async ({ page }) => {

@@ -9,7 +9,7 @@
     "generate:rss": "tsx scripts/generate-rss.ts",
     "test": "tsx src/lib/__tests__/sphereMath.test.ts",
     "test:visual": "playwright test",
-    "pre-commit": "tsx scripts/validate-content.ts && node scripts/build-town-manifest.mjs --check && tsx src/lib/__tests__/sphereMath.test.ts && tsx src/lib/__tests__/minimap.test.ts && tsx src/lib/__tests__/touchInput.test.ts && tsc --noEmit",
+    "pre-commit": "tsx scripts/validate-content.ts && node scripts/build-town-manifest.mjs --check && tsx src/lib/__tests__/sphereMath.test.ts && tsx src/lib/__tests__/minimap.test.ts && tsx src/lib/__tests__/touchInput.test.ts && tsx src/lib/__tests__/bodyMotion.test.ts && tsc --noEmit",
     "build": "tsx scripts/validate-content.ts && tsx scripts/generate-rss.ts && next build",
     "start": "next start",
     "lint": "eslint",
