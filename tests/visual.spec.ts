@@ -260,6 +260,30 @@ test.describe('Visitor movement', () => {
     expect(angleBetween(moved, heading2), 'the visitor walked along the look direction').toBeLessThan(0.6)
   })
 
+  test('the visitor and the guide each have a body on screen', async ({ page }) => {
+    // One URL means one model: drei caches a parsed GLTF per URL and a VRM scene is a
+    // single object graph, so two components mounting the same file share one object and
+    // the loser renders nothing. Pointing the NPCs at the visitor's file once made the
+    // player character itself invisible, and every other test still passed.
+    await ready(page)
+    await page.waitForTimeout(2500)
+    const bodies = await page.evaluate(() => {
+      const count = (name: string) => {
+        let n = 0
+        ;(window as unknown as DevWindow).__THREE_SCENE__.traverse((o: Object3D) => {
+          if (o.name !== name) return
+          o.traverse((c: Object3D) => {
+            if ((c as unknown as { isSkinnedMesh?: boolean }).isSkinnedMesh) n++
+          })
+        })
+        return n
+      }
+      return { visitor: count('visitor-facing'), guide: count('guide-facing') }
+    })
+    expect(bodies.visitor, 'the player character is rendered').toBeGreaterThan(0)
+    expect(bodies.guide, 'the guide is rendered').toBeGreaterThan(0)
+  })
+
   test('D strafes to the right of W and the model faces its travel direction', async ({ page }) => {
     await ready(page)
     const measure = async (key: string) => {
