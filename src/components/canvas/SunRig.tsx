@@ -32,7 +32,7 @@ const _up = new Vector3()
  * shadow frustum follows too — ±18m at 2048px is ~1.8cm per texel, which
  * keeps cast shadows as hard-edged as Messenger's.
  */
-export default function SunRig({ mapSize }: { mapSize: number }) {
+export default function SunRig({ mapSize, softShadows = false }: { mapSize: number; softShadows?: boolean }) {
   const lightRef = useRef<DirectionalLight>(null)
   const texel = (SHADOW_EXTENT * 2) / mapSize
 
@@ -48,8 +48,10 @@ export default function SunRig({ mapSize }: { mapSize: number }) {
       'shadow-camera-far': SUN_DISTANCE * 2,
       'shadow-bias': -0.0004,
       'shadow-normalBias': 0.03,
+      // Hard edges are the house style. `?shadows=soft` blurs them: a wider filter radius
+      'shadow-radius': softShadows ? 4 : 1,
     }),
-    [mapSize]
+    [mapSize, softShadows]
   )
 
   useFrame(() => {

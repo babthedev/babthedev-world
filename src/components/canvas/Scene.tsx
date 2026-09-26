@@ -31,8 +31,10 @@ export default function Scene() {
   const isTabHidden = useWorldStore((s) => s.isTabHidden)
   const setContextLost = useWorldStore((s) => s.setContextLost)
   const quality = useMemo(() => QUALITY[getQualityTier()], [])
-  // ?ao=off drops ambient occlusion, for comparing looks and cost
-  const aoForcedOff = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('ao') === 'off'
+  // ?shadows=soft blurs shadow edges, for comparing against the hard cel look
+  const softShadows = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('shadows') === 'soft'
+  // ?ao=on turns ambient occlusion on, for looking at it (off by default, see quality.ts)
+  const aoRequested = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('ao') === 'on'
 
   return (
     <Canvas
@@ -41,9 +43,9 @@ export default function Scene() {
       frameloop={isTabHidden ? 'never' : 'always'}
       onCreated={({ gl, scene, camera }) => {
         if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
-          ;(window as any).__THREE_SCENE__ = scene
-          ;(window as any).__THREE_CAMERA__ = camera
-          ;(window as any).__THREE_RENDERER__ = gl
+          ;(window as unknown as Record<string, unknown>).__THREE_SCENE__ = scene
+          ;(window as unknown as Record<string, unknown>).__THREE_CAMERA__ = camera
+          ;(window as unknown as Record<string, unknown>).__THREE_RENDERER__ = gl
         }
         const dom = gl.domElement
         // Q90: Automated webglcontextlost recovery
@@ -87,7 +89,7 @@ export default function Scene() {
           follows the visitor so every district gets the same light.
       ──────────────────────────────────────────────────── */}
       <ambientLight intensity={AMBIENT_INTENSITY} color="#FFFFFF" />
-      <SunRig mapSize={quality.shadowMapSize} />
+      <SunRig mapSize={quality.shadowMapSize} softShadows={softShadows} />
 
       {/* Keeps the frame rate steady on weaker devices by trading pixel density, not features */}
       <AdaptiveQuality maxDpr={quality.maxPixelRatio} />
@@ -114,7 +116,7 @@ export default function Scene() {
           lines themselves are anti-aliased.
       ──────────────────────────────────────────────────── */}
       <EffectComposer multisampling={0} enableNormalPass={quality.normalPass}>
-        {quality.ao && !aoForcedOff ? (
+        {(quality.ao || aoRequested) && quality.normalPass ? (
           <SSAO resolutionScale={0.5} samples={14} rings={4} radius={0.09} intensity={9} bias={0.03} luminanceInfluence={0.45} distanceScaling worldDistanceThreshold={40} worldDistanceFalloff={20} worldProximityThreshold={0.6} worldProximityFalloff={0.4} />
         ) : <></>}
         <Monochrome />

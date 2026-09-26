@@ -20,7 +20,7 @@ const fragmentShader = /* glsl */ `
 `
 
 class PaperGrainEffectImpl extends Effect {
-  constructor({ opacity = 0.035 } = {}) {
+  constructor({ opacity = 0.026 } = {}) {
     super('PaperGrainEffect', fragmentShader, {
       uniforms: new Map<string, Uniform>([
         ['grainOpacity', new Uniform(opacity)],

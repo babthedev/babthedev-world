@@ -168,7 +168,12 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
           child.material = Array.isArray(child.material)
             ? child.material.map(convert)
             : convert(child.material)
-          child.castShadow = !child.name.includes('Face')
+          // The inverted-hull outline shells are only there to be inked: they have no
+          // business in the shadow map, where they double the character's cost for nothing.
+          const isOutlineShell = (Array.isArray(child.material) ? child.material : [child.material]).some(
+            (mat) => (mat as LooseMaterial).isOutline
+          )
+          child.castShadow = !child.name.includes('Face') && !isOutlineShell
           // Self-shadowing on VRoid meshes produces acne speckle at this scale
           child.receiveShadow = false
           // Keep camera occlusion raycasts from treating characters as walls
