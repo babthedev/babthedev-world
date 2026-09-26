@@ -3,6 +3,8 @@
 import { useMemo } from 'react'
 import { DataTexture, MeshToonMaterial, RedFormat } from 'three'
 import { paint } from '@/lib/paint'
+import KnockableProps from './KnockableProps'
+import { knockablesEnabled } from '@/lib/featureFlags'
 import { Physics, RigidBody, BallCollider } from '@react-three/rapier'
 import VisitorController from './VisitorController'
 import AbdulrahmanController from './AbdulrahmanController'
@@ -96,6 +98,7 @@ export default function World() {
       <Environment gradientMap={gradientMap} />
       <StreetKit gradientMap={gradientMap} />
       <InteractiveProps />
+      {knockablesEnabled() && <KnockableProps gradientMap={gradientMap} />}
     </Physics>
   )
 }

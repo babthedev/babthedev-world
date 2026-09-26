@@ -23,6 +23,9 @@ export function useRadialGravity(strength: number = RADIAL_GRAVITY) {
     world.bodies.forEach((body) => {
       // Only affect dynamic bodies (not fixed or kinematic)
       if (!body.isDynamic()) return
+      // A body at rest stays at rest: re-applying the pull would wake it every step and
+      // nothing could ever settle. Touching it (a shove, a bump) wakes it on its own.
+      if (body.isSleeping()) return
 
       const pos = body.translation()
       const dir = _gravityDir.current

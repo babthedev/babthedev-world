@@ -553,7 +553,46 @@ export function useAudioManager() {
     osc.stop(now + 0.18)
   }, [])
 
+  // ── KNOCK: a prop shoved or knocked over; harder hits are louder and lower ──
+  const playKnock = useCallback((intensity = 0.5) => {
+    if (mutedRef.current || !unlockedRef.current) return
+    const graph = getAudioGraph()
+    if (!graph || graph.ctx.state !== 'running') return
+    const ctx = graph.ctx
+    const now = ctx.currentTime
+    const power = Math.min(1, Math.max(0, intensity))
+    const jitter = 0.92 + Math.random() * 0.16
+
+    const body = ctx.createOscillator()
+    const bodyGain = ctx.createGain()
+    body.type = 'triangle'
+    body.frequency.setValueAtTime((220 - power * 90) * jitter, now)
+    body.frequency.exponentialRampToValueAtTime(70, now + 0.1)
+    bodyGain.gain.setValueAtTime(0.06 + power * 0.14, now)
+    bodyGain.gain.exponentialRampToValueAtTime(0.001, now + 0.11)
+    body.connect(bodyGain)
+    bodyGain.connect(graph.districtFilter)
+    body.start(now)
+    body.stop(now + 0.12)
+
+    // the click of the hit itself
+    const tick = ctx.createBufferSource()
+    tick.buffer = getNoise(ctx)
+    const tickBand = ctx.createBiquadFilter()
+    tickBand.type = 'bandpass'
+    tickBand.frequency.value = 2200 * jitter
+    const tickGain = ctx.createGain()
+    tickGain.gain.setValueAtTime(0.05 + power * 0.06, now)
+    tickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03)
+    tick.connect(tickBand)
+    tickBand.connect(tickGain)
+    tickGain.connect(graph.districtFilter)
+    tick.start(now, Math.random() * 1.5)
+    tick.stop(now + 0.04)
+  }, [])
+
   return {
+    playKnock,
     startAmbience,
     playHover,
     playWhoosh,
