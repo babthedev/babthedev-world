@@ -8,7 +8,7 @@ const CACHE_NAME = 'babworld-assets-v1'
 
 const STATIC_PRECACHE = [
   '/',
-  '/manifest.json',
+  '/manifest.webmanifest',
   '/feed.xml',
   '/resume.pdf',
 ]
@@ -16,9 +16,11 @@ const STATIC_PRECACHE = [
 self.addEventListener('install', (event) => {
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_PRECACHE).catch(() => {
-        // Tolerant precache
-      })
+      // One at a time, not addAll: addAll is atomic, so a single missing file
+      // would silently leave the whole precache empty.
+      return Promise.all(
+        STATIC_PRECACHE.map((url) => cache.add(url).catch(() => {}))
+      )
     })
   )
   self.skipWaiting()
