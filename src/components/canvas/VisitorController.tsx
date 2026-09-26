@@ -442,7 +442,7 @@ export default function VisitorController() {
         args={[CHARACTER_CAPSULE_HEIGHT / 2, CHARACTER_CAPSULE_RADIUS]}
         collisionGroups={interactionGroups(1, [0])}
       />
-      <group ref={modelRef}>
+      <group ref={modelRef} name="visitor-facing">
         {/* Pivot at the feet (capsule centre is CAPSULE_HEIGHT/2 + RADIUS above them), net offset zero */}
         <group position={[0, -FEET_BELOW_CENTRE, 0]}>
           <group ref={leanRef}>

@@ -16,7 +16,7 @@ Priority order (biggest visual return first):
 | 1 | Building kit (P6) | Architecture is the largest remaining gap to Messenger |
 | 2 | Street furniture and facade attachments | Density: Messenger has far more props per metre |
 | 3 | Animation clips | Mocap-quality walk, idle, sit |
-| 4 | Distinct NPC characters | `joe.vrm` is currently a copy of `visitor.vrm` |
+| 4 | Distinct NPC characters | all three NPCs currently share the visitor model |
 | 5 | Signage lettering and title face | Replaces the generated glyph script |
 
 ---
@@ -159,8 +159,12 @@ and fallback are already built and tested; see `docs/ANIMATIONS.md`.
 - **Format:** VRM 1.0 (VRoid Studio export is fine). Run `pnpm assets:vrm` on delivery; it
   slims them to roughly 3 MB each without changing anything the runtime needs.
 - **Three distinct NPCs** are needed: Joe (café), the library sleeper, the newspaper reader.
-  Today all three share the visitor's model. The character budget is 12 MB total and is
-  currently 8.3 MB (3 files), so a fourth or fifth model needs the diet applied first.
+  Today all three share the visitor’s model, set by `NPC_PLACEHOLDER_MODEL` in
+  `src/lib/characterModels.ts`. (There used to be a `joe.vrm`, but it was a byte-identical
+  copy of `visitor.vrm`, so every visitor downloaded the same 2.9 MB twice; it was removed.)
+  **To add a real one:** drop the file in `public/` and set that NPC’s `modelUrl` in
+  `src/lib/worldCoordinates.ts` (or change the constant to move all three at once).
+  The character budget is 12 MB and is currently 5.4 MB (2 files), so there is room for three more.
 - **Fewer materials per character is a direct performance win.** Each material becomes a
   separate draw, and each is drawn three times per frame. The current models have about 15
   submeshes each; **6 or fewer** would cut character cost by more than half. In VRoid,

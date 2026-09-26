@@ -1,3 +1,4 @@
+import { NPC_PLACEHOLDER_MODEL } from './characterModels'
 // ============================================================
 // WORLD COORDINATES — Flat XZ neighborhood layout
 // Y is always 0 (ground). Characters spawn at Y = 1.
@@ -246,7 +247,7 @@ export const NPC_LOCATIONS: NPCLocation[] = [
     seated: true,
     district: '/bio',
     dialogueKey: 'joe',
-    modelUrl: '/joe.vrm',
+    modelUrl: NPC_PLACEHOLDER_MODEL,
   },
   {
     id: 'library-sleeper',
@@ -256,7 +257,7 @@ export const NPC_LOCATIONS: NPCLocation[] = [
     seated: true,
     district: '/essays',
     dialogueKey: 'library-sleeper',
-    modelUrl: '/joe.vrm',
+    modelUrl: NPC_PLACEHOLDER_MODEL,
   },
   {
     id: 'cafe-newspaper-reader',
@@ -267,7 +268,7 @@ export const NPC_LOCATIONS: NPCLocation[] = [
     seated: true,
     district: '/bio',
     dialogueKey: '', // ambient — no dialogueKey means no interaction
-    modelUrl: '/joe.vrm',
+    modelUrl: NPC_PLACEHOLDER_MODEL,
   },
 ]
 

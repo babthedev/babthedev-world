@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo } from 'react'
+import { useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
 import { Mesh, MeshToonMaterial, Texture } from 'three'
 import {
@@ -194,5 +194,5 @@ export default function Environment({ gradientMap }: EnvironmentProps) {
   )
 }
 
-// Preload Joe VRM asset
-useGLTF.preload('/joe.vrm')
+// The NPCs share the visitor model until they have their own (see lib/characterModels),
+// and the visitor already preloads it, so there is nothing extra to fetch here.

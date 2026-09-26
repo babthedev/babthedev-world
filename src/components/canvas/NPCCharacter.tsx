@@ -8,6 +8,7 @@ import { useWorldStore } from '@/store/useWorldStore'
 import CharacterModel from './CharacterModel'
 import { NPCLocation } from '@/lib/worldCoordinates'
 import { NPC_DIALOGUES } from '@/lib/dialogue'
+import { NPC_PLACEHOLDER_MODEL } from '@/lib/characterModels'
 import { NPC_TRIGGER_RADIUS, NPC_SPEAK_RADIUS, ABDULRAHMAN_COLOR } from '@/lib/constants'
 
 interface NPCCharacterProps {
@@ -103,7 +104,7 @@ export default function NPCCharacter({ npc, gradientMap }: NPCCharacterProps) {
       rotation={npc.rotation ?? [0, 0, 0]}
     >
       <CharacterModel
-        url={npc.modelUrl || '/joe.vrm'}
+        url={npc.modelUrl || NPC_PLACEHOLDER_MODEL}
         color={ABDULRAHMAN_COLOR}
         gradientMap={gradientMap}
         animationName={npc.seated ? 'sit' : 'idle'}

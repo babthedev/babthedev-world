@@ -366,7 +366,7 @@ export default function AbdulrahmanController() {
         args={[CHARACTER_CAPSULE_HEIGHT / 2, CHARACTER_CAPSULE_RADIUS]}
         collisionGroups={interactionGroups(2, [0])}
       />
-      <group ref={modelRef}>
+      <group ref={modelRef} name="guide-facing">
         <CharacterModel
           url="/abdulrahman.vrm"
           color={ABDULRAHMAN_COLOR}

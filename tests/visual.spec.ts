@@ -270,11 +270,12 @@ test.describe('Visitor movement', () => {
       const s = await page.evaluate(() => {
         const v = (window as unknown as DevWindow).__VISITOR__()
         const S = (window as unknown as DevWindow).__THREE_SCENE__
-        const hips: Object3D[] = []
-        S.traverse((o: Object3D) => o.name === 'Normalized_J_Bip_C_Hips' && hips.push(o))
-        const dist = (o: Object3D) => { const p = o.getWorldPosition(o.position.clone()); return Math.hypot(p.x - v.pos[0], p.y - v.pos[1], p.z - v.pos[2]) }
-        hips.sort((a, b) => dist(a) - dist(b))
-        const root = hips[0].parent!.parent!
+        // By name, not by proximity: the guide stands less than a metre away, so
+        // picking the nearest hips sometimes measured HIS facing instead of the visitor's.
+        const found: Object3D[] = []
+        S.traverse((o: Object3D) => { if (o.name === 'visitor-facing') found.push(o) })
+        const root = found[0]
+        if (!root) throw new Error('visitor-facing group not found')
         const f = root.position.clone().set(0, 0, 1).applyQuaternion(root.getWorldQuaternion(root.quaternion.clone()))
         const sp = Math.hypot(...(v.vel as number[]))
         return { vel: v.vel as number[], pos: v.pos as number[], facing: [f.x, f.y, f.z], sp }

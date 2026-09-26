@@ -592,4 +592,3 @@ export default CharacterModel
 // Preload characters at module load time
 useGLTF.preload('/abdulrahman.vrm', undefined, undefined, registerVRM)
 useGLTF.preload('/visitor.vrm', undefined, undefined, registerVRM)
-useGLTF.preload('/joe.vrm', undefined, undefined, registerVRM)
