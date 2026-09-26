@@ -96,6 +96,12 @@ export default function CameraController() {
     _facingTarget.set(facingDir[0], facingDir[1], facingDir[2])
     settleFacing(_normal, _facingTarget)
     settleFacing(_normal, cameraRig.heading)
+    // Mouse look: turn the heading itself. Right is clockwise seen from above, so a negative
+    // angle about the surface normal.
+    if (cameraRig.lookYaw !== 0) {
+      cameraRig.heading.applyAxisAngle(_normal, -cameraRig.lookYaw)
+      cameraRig.lookYaw = 0
+    }
     const headingError = Math.atan2(
       _normal.dot(_facingCross.crossVectors(cameraRig.heading, _facingTarget)),
       cameraRig.heading.dot(_facingTarget)
@@ -144,6 +150,9 @@ export default function CameraController() {
 
     // ── Q142: PITCH CLAMPING ────────────────────────────
     // Clamp vertical orbit angle to -15° (down) to +60° (up) relative to tangent plane
+    // Mouse down raises the camera, so the view tips down (and up for mouse up)
+    pitchAngle.current += cameraRig.lookPitch
+    cameraRig.lookPitch = 0
     pitchAngle.current = MathUtils.clamp(pitchAngle.current, CAMERA_PITCH_MIN, CAMERA_PITCH_MAX)
     const pitchElevation = Math.sin(pitchAngle.current) * targetDist
     const pitchFlatten = Math.cos(pitchAngle.current)

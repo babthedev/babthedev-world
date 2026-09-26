@@ -22,6 +22,8 @@ import WebGLErrorBoundary from '@/components/WebGLErrorBoundary'
 import { useTourLogic } from '@/hooks/useTourLogic'
 import { usePageVisibility } from '@/hooks/usePageVisibility'
 import { useAmbience } from '@/hooks/useAmbience'
+import { useMouseLook } from '@/hooks/useMouseLook'
+import LookHint from '@/ui/LookHint'
 
 export default function GlobalCanvas() {
   // Global tour-resume logic — lives here since this component
@@ -29,6 +31,7 @@ export default function GlobalCanvas() {
   useTourLogic()
   usePageVisibility()
   useAmbience()
+  useMouseLook()
 
 
   return (
@@ -62,6 +65,7 @@ export default function GlobalCanvas() {
           Layered by z-index: hints (20) < labels (20) < panel (30) < intro (30) < iris (50)
       ──────────────────────────────────────────────────── */}
       <InteractHint />
+      <LookHint />
       <DistrictLabel />
       <HUDIcons />
       <ReadingPanel />

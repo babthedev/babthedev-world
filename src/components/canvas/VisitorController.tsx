@@ -311,6 +311,8 @@ export default function VisitorController() {
     // swing out of frame when they turn to follow the guide, badly so in narrow portrait.
     if (greeting.active) {
       cameraRig.followRate = 0 // the director frames the pair
+    } else if (cameraRig.mouseLook && !isReading) {
+      cameraRig.followRate = 0 // the player is steering the view: leave it where they put it
     } else if (isTourActive) {
       cameraRig.followRate = CAMERA_FOLLOW_TOUR
     } else if (_direction.lengthSq() < 1e-6) {

@@ -8,6 +8,7 @@ interface DevWindow extends Window {
   __THREE_SCENE__: Object3D
   __BODY__: { pitch: { x: number }; roll: { x: number }; squash: { x: number; v: number } }
   __AMBIENCE__?: boolean
+  __CAMERA_RIG__: { heading: { x: number; y: number; z: number }; mouseLook: boolean }
   __GREETING__: { t: number; active: boolean; done: boolean; weight: number }
   __WORLD_STORE__: { getState: () => { position: number[]; abdulrahmanPosition: number[]; introComplete: boolean; setIntroComplete: (v: boolean) => void } }
 }
@@ -207,6 +208,56 @@ test.describe('Visitor movement', () => {
     await page.keyboard.press('KeyM')
     await page.keyboard.press('Escape')
     expect(errors, 'no uncaught errors from audio').toEqual([])
+  })
+
+  test('the mouse turns the camera like a 3D game, and W walks where you are looking', async ({ page }) => {
+    await ready(page)
+    await page.waitForTimeout(1500)
+    const heading = () =>
+      page.evaluate(() => {
+        const h = (window as unknown as DevWindow).__CAMERA_RIG__.heading
+        return [h.x, h.y, h.z]
+      })
+    const angleBetween = (a: number[], b: number[]) => {
+      const dot = a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+      return Math.acos(Math.min(1, Math.max(-1, dot / (Math.hypot(...a) * Math.hypot(...b)))))
+    }
+    const before = await heading()
+
+    // press on the world and drag right: the view turns
+    await page.mouse.move(640, 300)
+    await page.mouse.down()
+    await page.mouse.move(900, 300, { steps: 10 })
+    await page.mouse.up()
+    await page.waitForFunction(
+      (b) => {
+        const h = (window as unknown as DevWindow).__CAMERA_RIG__.heading
+        const dot = h.x * b[0] + h.y * b[1] + h.z * b[2]
+        return Math.acos(Math.min(1, Math.max(-1, dot / (Math.hypot(h.x, h.y, h.z) * Math.hypot(b[0], b[1], b[2]))))) > 0.35
+      },
+      before,
+      { timeout: 90000, polling: 50 }
+    )
+    const looking = await heading()
+    expect(angleBetween(before, looking), 'the camera turned').toBeGreaterThan(0.35)
+
+    // ...and W now walks the way the camera looks
+    if (await page.evaluate(() => !!document.pointerLockElement)) await page.evaluate(() => document.exitPointerLock())
+    const start = (await nav(page)).position
+    await page.keyboard.down('KeyW')
+    await page.waitForFunction(
+      (a) => {
+        const now = (window as unknown as { __WORLD_STORE__: { getState: () => { position: number[] } } }).__WORLD_STORE__.getState().position
+        return Math.hypot(now[0] - a[0], now[1] - a[1], now[2] - a[2]) > 2
+      },
+      start,
+      { timeout: 90000, polling: 50 }
+    )
+    await page.keyboard.up('KeyW')
+    const end = (await nav(page)).position
+    const moved = end.map((v, i) => v - start[i])
+    const heading2 = await heading()
+    expect(angleBetween(moved, heading2), 'the visitor walked along the look direction').toBeLessThan(0.6)
   })
 
   test('D strafes to the right of W and the model faces its travel direction', async ({ page }) => {

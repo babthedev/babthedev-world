@@ -18,4 +18,14 @@ export const cameraRig = {
   speed: 0,
   /** Frames left in which the camera jumps straight to its target instead of easing (a teleport or map jump). */
   snapFrames: 0,
+  /** Mouse look, accumulated between frames and consumed by the camera. Radians; + is look right / tilt the view down. */
+  lookYaw: 0,
+  lookPitch: 0,
+  /** The mouse is steering the camera (pointer locked, or the button is held): the camera must not swing back on its own. */
+  mouseLook: false,
+}
+
+// Dev-only window hook so tests can watch the camera heading
+if (typeof window !== 'undefined' && process.env.NODE_ENV !== 'production') {
+  ;(window as unknown as Record<string, unknown>).__CAMERA_RIG__ = cameraRig
 }
