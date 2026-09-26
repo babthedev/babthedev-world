@@ -2,7 +2,8 @@
 
 import { Suspense, useMemo } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { EffectComposer, SMAA } from '@react-three/postprocessing'
+import { EffectComposer, SMAA, SSAO, Vignette } from '@react-three/postprocessing'
+import AdaptiveQuality from './AdaptiveQuality'
 import World from './World'
 import CameraController from './CameraController'
 import SobelOutline from './SobelOutline'
@@ -30,6 +31,8 @@ export default function Scene() {
   const isTabHidden = useWorldStore((s) => s.isTabHidden)
   const setContextLost = useWorldStore((s) => s.setContextLost)
   const quality = useMemo(() => QUALITY[getQualityTier()], [])
+  // ?ao=off drops ambient occlusion, for comparing looks and cost
+  const aoForcedOff = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('ao') === 'off'
 
   return (
     <Canvas
@@ -86,6 +89,9 @@ export default function Scene() {
       <ambientLight intensity={AMBIENT_INTENSITY} color="#FFFFFF" />
       <SunRig mapSize={quality.shadowMapSize} />
 
+      {/* Keeps the frame rate steady on weaker devices by trading pixel density, not features */}
+      <AdaptiveQuality maxDpr={quality.maxPixelRatio} />
+
       {/* ── CAMERA ───────────────────────────────────── */}
       <CameraController />
 
@@ -108,8 +114,12 @@ export default function Scene() {
           lines themselves are anti-aliased.
       ──────────────────────────────────────────────────── */}
       <EffectComposer multisampling={0} enableNormalPass={quality.normalPass}>
+        {quality.ao && !aoForcedOff ? (
+          <SSAO resolutionScale={0.5} samples={14} rings={4} radius={0.09} intensity={9} bias={0.03} luminanceInfluence={0.45} distanceScaling worldDistanceThreshold={40} worldDistanceFalloff={20} worldProximityThreshold={0.6} worldProximityFalloff={0.4} />
+        ) : <></>}
         <Monochrome />
         <SobelOutline />
+        <Vignette eskil={false} offset={0.32} darkness={0.42} />
         <PaperGrain />
         {quality.smaa ? <SMAA /> : <></>}
       </EffectComposer>

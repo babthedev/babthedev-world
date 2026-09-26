@@ -14,4 +14,8 @@ export const cameraRig = {
   heading: new Vector3(0, 0, 1),
   /** How fast (1/s) the heading turns toward the visitor's facing this frame. Set by the visitor. */
   followRate: 0,
+  /** 0..1: how fast the visitor is moving, as a fraction of walking speed. Drives the FOV kick. */
+  speed: 0,
+  /** Frames left in which the camera jumps straight to its target instead of easing (a teleport or map jump). */
+  snapFrames: 0,
 }

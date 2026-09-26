@@ -23,6 +23,7 @@ export const SPHERE_SEGMENTS = 128             // Smooth sphere mesh resolution
 export const CAMERA_HEIGHT = 1.75               // above the visitor's capsule origin, along the normal
 export const CAMERA_BACK = 3.9
 export const CAMERA_FOV = 68
+export const CAMERA_FOV_KICK = 3.5           // extra degrees of FOV at full walking speed: a sense of momentum
 export const CAMERA_LOOK_HEIGHT = 1.35
 export const CAMERA_LOOK_AHEAD = 2.2
 // Q143/Q144, re-tuned for the closer/wider framing (was 6m @ 60° FOV,

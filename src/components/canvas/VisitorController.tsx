@@ -137,6 +137,7 @@ export default function VisitorController() {
       setFacingDir([look.x, look.y, look.z])
       setTourActive(false)
       skipGreeting() // someone (a script or the map) is driving, not the intro
+      cameraRig.snapFrames = 4
       setPosition(spawn)
       // isTourActive is a render-time value, so for a frame or two after this the
       // tour branch can still steer the visitor toward the guide and overwrite the
@@ -277,6 +278,9 @@ export default function VisitorController() {
       settleFacing(_normal, _greetDir)
       turnToward(facingRef.current, _greetDir, _normal, 7 * delta)
     }
+
+    // Published for the camera's FOV kick
+    cameraRig.speed = greeting.active || isReading ? 0 : Math.min(1, _direction.length() / VISITOR_SPEED)
 
     // ── CAMERA FOLLOW RATE (Q11) ─────────────────────────
     // Idle: gently orbit toward the facing. Moving: follow only the FORWARD part

@@ -3,12 +3,14 @@
 import { useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { OrbitControls } from '@react-three/drei'
-import { Vector3, MathUtils, Raycaster, Mesh } from 'three'
+import { Vector3, MathUtils, Raycaster, Mesh, PerspectiveCamera } from 'three'
 import { useWorldStore } from '@/store/useWorldStore'
 import {
   CAMERA_HEIGHT,
   CAMERA_BACK,
   CAMERA_LERP,
+  CAMERA_FOV,
+  CAMERA_FOV_KICK,
   CAMERA_PITCH_MIN,
   CAMERA_PITCH_MAX,
   CAMERA_IMPULSE,
@@ -214,9 +216,26 @@ export default function CameraController() {
     // orientation matrix calculates with the correct up vector
     state.camera.up.copy(_normal)
 
-    // Smooth camera position with bounded lerp factor
-    const camLerpAlpha = Math.min(1, CAMERA_LERP * dt)
-    state.camera.position.lerp(_desired, camLerpAlpha)
+    // Smooth camera position with bounded lerp factor. After a teleport or map jump
+    // the camera cuts straight to its new spot: easing there would slide it through
+    // the planet. (Several frames, because the visitor's position reaches this
+    // component through React state a frame late.)
+    if (cameraRig.snapFrames > 0) {
+      cameraRig.snapFrames--
+      state.camera.position.copy(_desired)
+    } else {
+      const camLerpAlpha = Math.min(1, CAMERA_LERP * dt)
+      state.camera.position.lerp(_desired, camLerpAlpha)
+    }
+
+    // FOV kick: widen a touch with speed, ease back at rest. Small enough to be felt, not seen.
+    const cam = state.camera as PerspectiveCamera
+    const fovTarget = CAMERA_FOV + CAMERA_FOV_KICK * cameraRig.speed
+    const fov = MathUtils.lerp(cam.fov, fovTarget, Math.min(1, 3.5 * dt))
+    if (Math.abs(fov - cam.fov) > 0.005) {
+      cam.fov = fov
+      cam.updateProjectionMatrix()
+    }
     state.camera.lookAt(_lookAt)
   })
 

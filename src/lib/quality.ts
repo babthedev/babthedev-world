@@ -5,8 +5,8 @@
 // whole scene* (the normal buffer the outline pass reads, the shadow map, SMAA)
 // and the pixel count, so that is what the low tier drops:
 //
-//   high  dpr ≤ 1.5, 2048 shadow map, normal-buffer outlines, SMAA
-//   low   dpr 1,     1024 shadow map, depth-only outlines, no SMAA
+//   high  dpr ≤ 1.5, 2048 shadow map, normal-buffer outlines, SMAA, ambient occlusion
+//   low   dpr 1,     1024 shadow map, depth-only outlines, no SMAA, no ambient occlusion
 //
 // The low tier is chosen automatically for weak or touch-first devices, and
 // can be forced with ?quality=low or ?quality=high (handy for comparing).
@@ -20,11 +20,13 @@ export interface QualitySettings {
   /** Render the scene a second time into a normal buffer, so creases inside one surface get inked. */
   normalPass: boolean
   smaa: boolean
+  /** Screen-space ambient occlusion: soft darkening in corners and under overhangs. Needs the normal buffer. */
+  ao: boolean
 }
 
 export const QUALITY: Record<QualityTier, QualitySettings> = {
-  high: { maxPixelRatio: 1.5, shadowMapSize: 2048, normalPass: true, smaa: true },
-  low: { maxPixelRatio: 1, shadowMapSize: 1024, normalPass: false, smaa: false },
+  high: { maxPixelRatio: 1.5, shadowMapSize: 2048, normalPass: true, smaa: true, ao: true },
+  low: { maxPixelRatio: 1, shadowMapSize: 1024, normalPass: false, smaa: false, ao: false },
 }
 
 export function getQualityTier(): QualityTier {
