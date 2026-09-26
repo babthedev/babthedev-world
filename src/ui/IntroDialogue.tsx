@@ -96,8 +96,8 @@ export default function IntroDialogue() {
 
   return (
     <div
-      className={`fixed inset-0 z-30 flex items-end justify-center pb-12 px-6 transition-opacity duration-400 ${
-        visible && charactersReady ? 'opacity-100' : 'opacity-0'
+      className={`fixed inset-0 z-30 flex items-end justify-center pb-12 px-6 transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none ${
+        visible && charactersReady ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
       }`}
       style={{ pointerEvents: visible && charactersReady ? 'auto' : 'none' }}
     >

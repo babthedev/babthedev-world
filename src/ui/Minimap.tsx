@@ -38,9 +38,9 @@ export default function Minimap() {
       aria-label="Open world map"
       title="World map (M)"
       tabIndex={visible ? 0 : -1}
-      className={`group fixed z-20 cursor-pointer transition-opacity duration-500 ${
+      className={`group fixed z-20 cursor-pointer origin-top-left transition-[opacity,transform] duration-500 ease-[cubic-bezier(0.2,0.8,0.2,1)] motion-reduce:transition-none ${
         touchUi ? 'left-3' : 'bottom-4 left-4 md:bottom-6 md:left-6'
-      } ${visible ? 'opacity-100' : 'pointer-events-none opacity-0'}`}
+      } ${visible ? 'opacity-100 scale-100' : 'pointer-events-none opacity-0 scale-90'}`}
       style={touchUi ? { top: 'calc(12px + env(safe-area-inset-top, 0px))' } : undefined}
     >
       <MapCanvas

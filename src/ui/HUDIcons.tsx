@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useRef } from 'react'
+import { motion, useReducedMotion, type Variants } from 'framer-motion'
 import { HUD_ICON_SIZE } from '@/lib/constants'
 import { useAudioManager } from '@/hooks/useAudioManager'
 import { useWorldStore } from '@/store/useWorldStore'
@@ -23,16 +24,31 @@ function getAudioContext(): { ctx: AudioContext; gain: GainNode } {
   return { ctx: audioCtx, gain: masterGain }
 }
 
+// Staggered spring entrance for the icon strip (skipped under reduced motion)
+const STRIP: Variants = {
+  hidden: {},
+  shown: { transition: { staggerChildren: 0.07, delayChildren: 0.35 } },
+}
+const TILE_ENTRANCE: Variants = {
+  hidden: { opacity: 0, x: 22, scale: 0.85 },
+  shown: { opacity: 1, x: 0, scale: 1, transition: { type: 'spring', stiffness: 380, damping: 26 } },
+}
+
 // HUD tiles: light paper squares with a hard offset shadow (Messenger-style),
 // inverting to ink on hover and pressing down on click. Icons use currentColor.
 const TILE =
   'bg-[#F3F2ED] border-2 border-black flex items-center justify-center text-[#111] cursor-pointer ' +
-  'shadow-[4px_4px_0px_0px_#111] transition-[background-color,color,transform,box-shadow] ' +
-  'hover:bg-[#111] hover:text-[#F3F2ED] active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_#111] ' +
+  'shadow-[4px_4px_0px_0px_#111] transition-[background-color,color,transform,box-shadow] duration-150 ease-[cubic-bezier(0.2,0.8,0.2,1)] ' +
+  'hover:bg-[#111] hover:text-[#F3F2ED] hover:-translate-x-px hover:-translate-y-px hover:shadow-[5px_5px_0px_0px_#111] ' +
+  'active:translate-x-[2px] active:translate-y-[2px] active:shadow-[2px_2px_0px_0px_#111] ' +
   'focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#111]'
 
 export default function HUDIcons() {
   const setMapOpen = useWorldStore((s) => s.setMapOpen)
+  const charactersReady = useWorldStore((s) => s.charactersReady)
+  const reduceMotion = useReducedMotion()
+  // The strip arrives once the world is on screen (at once for people who prefer reduced motion)
+  const worldReady = charactersReady || !!reduceMotion
   const [muted, setMutedState] = useState(false)
   const [isCapturing, setIsCapturing] = useState(false)
   const [toastMessage, setToastMessage] = useState<string | null>(null)
@@ -188,12 +204,13 @@ export default function HUDIcons() {
   return (
     <>
       {/* ── ICON STRIP ─────────────────────────────────── */}
-      <div
+      <motion.div
         className="fixed right-4 top-1/2 -translate-y-1/2 z-20 flex flex-col gap-2 md:right-6"
-        style={{
-          // Mobile: move to bottom-right per spec
-        }}
+        variants={STRIP}
+        initial="hidden"
+        animate={worldReady ? 'shown' : 'hidden'}
       >
+        <motion.div variants={TILE_ENTRANCE}>
         <button
           onClick={handleCapture}
           disabled={isCapturing}
@@ -204,7 +221,9 @@ export default function HUDIcons() {
         >
           <CameraIcon />
         </button>
+        </motion.div>
 
+        <motion.div variants={TILE_ENTRANCE}>
         <button
           onClick={toggleMap}
           aria-label="Open map"
@@ -213,7 +232,9 @@ export default function HUDIcons() {
         >
           <MapIcon />
         </button>
+        </motion.div>
 
+        <motion.div variants={TILE_ENTRANCE}>
         <button
           onClick={openContact}
           aria-label="Send letter / Contact Abdulrahman"
@@ -222,7 +243,9 @@ export default function HUDIcons() {
         >
           <MailIcon />
         </button>
+        </motion.div>
 
+        <motion.div variants={TILE_ENTRANCE}>
         <button
           onClick={() => {
             playClick()
@@ -234,7 +257,9 @@ export default function HUDIcons() {
         >
           <InfoIcon />
         </button>
+        </motion.div>
 
+        <motion.div variants={TILE_ENTRANCE}>
         <button
           onClick={toggleMute}
           aria-label={muted ? 'Unmute' : 'Mute'}
@@ -243,12 +268,13 @@ export default function HUDIcons() {
         >
           {muted ? <MuteIcon /> : <SoundIcon />}
         </button>
-      </div>
+        </motion.div>
+      </motion.div>
 
       {/* ── PHOTO CAPTURED CONFIRMATION TOAST ──────────── */}
       {toastMessage && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#FAF9F5] text-black border-2 border-black px-4 py-2 font-mono text-xs tracking-wider shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] flex items-center gap-2 select-none animate-in fade-in duration-200">
-          <span className="w-2 h-2 rounded-full bg-emerald-600 inline-block" />
+          <span className="w-2 h-2 rounded-full bg-[#0B0B0B] inline-block" />
           <span>{toastMessage}</span>
         </div>
       )}
