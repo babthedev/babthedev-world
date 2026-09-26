@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import { useAudioManager } from '@/hooks/useAudioManager'
 import { useWorldStore } from '@/store/useWorldStore'
 import MapCanvas, { MAP_DISTRICTS } from '@/ui/MapCanvas'
 import type { DistrictName } from '@/lib/worldCoordinates'
@@ -18,6 +19,14 @@ export default function WorldMap() {
   const current = useWorldStore((s) => s.currentDistrict)
   const touchUi = useWorldStore((s) => s.touchUi)
   const closeRef = useRef<HTMLButtonElement>(null)
+  const { playWhoosh } = useAudioManager()
+  const wasOpen = useRef(false)
+
+  // rising as it opens, falling as it closes; silent on first render
+  useEffect(() => {
+    if (mapOpen !== wasOpen.current) playWhoosh(mapOpen)
+    wasOpen.current = mapOpen
+  }, [mapOpen, playWhoosh])
 
   useEffect(() => {
     if (!mapOpen) return

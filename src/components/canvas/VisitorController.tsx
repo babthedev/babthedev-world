@@ -107,7 +107,7 @@ export default function VisitorController() {
   const animStateRef = useRef<'idle' | 'walk'>('idle')
   const [animName, setAnimName] = useState<'idle' | 'walk'>('idle')
 
-  const { playFootstep } = useAudioManager()
+  const { playFootstep, playWhoosh, playThud } = useAudioManager()
 
   // Track the character's heading (yaw) on the tangent plane
   // Facing is a world-space tangent vector, not an angle (see settleFacing)
@@ -180,6 +180,7 @@ export default function VisitorController() {
     if (!coord) return
     const store = useWorldStore.getState()
     store.setMapOpen(false)
+    playWhoosh(true)
     store.triggerIrisTransition(() => {
       // Face the middle of town from a district, and up the north street from the Hub
       const [x, , z] = coord.spawnPoint
@@ -188,8 +189,9 @@ export default function VisitorController() {
       // Someone who just jumped here wants to look around, not be led away again
       store.holdTour(TRAVEL_TOUR_HOLD_MS)
       store.setTravelArrival({ path: travelRequest.path, id: travelRequest.id })
+      playThud()
     })
-  }, [travelRequest, placeAt])
+  }, [travelRequest, placeAt, playWhoosh, playThud])
 
   // ── DEV: TELEPORT HOOK (used by scripts/capture-poses.mjs) ──
   // __TELEPORT__(flatX, flatZ, lookFlatX, lookFlatZ)

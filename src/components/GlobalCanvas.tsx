@@ -21,12 +21,14 @@ import ColophonModal from '@/ui/ColophonModal'
 import WebGLErrorBoundary from '@/components/WebGLErrorBoundary'
 import { useTourLogic } from '@/hooks/useTourLogic'
 import { usePageVisibility } from '@/hooks/usePageVisibility'
+import { useAmbience } from '@/hooks/useAmbience'
 
 export default function GlobalCanvas() {
   // Global tour-resume logic — lives here since this component
   // is always mounted for the lifetime of the app
   useTourLogic()
   usePageVisibility()
+  useAmbience()
 
 
   return (

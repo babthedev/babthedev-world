@@ -55,7 +55,7 @@ export default function HUDIcons() {
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const gainRef = useRef<GainNode | null>(null)
-  const { setMuted, playClick, playShutter } = useAudioManager()
+  const { setMuted, playClick, playShutter, playHover } = useAudioManager()
   const setActivePanel = useWorldStore((s) => s.setActivePanel)
 
   // ── INITIALISE AUDIO CONTEXT ON FIRST USER GESTURE ──────────
@@ -210,7 +210,7 @@ export default function HUDIcons() {
         initial="hidden"
         animate={worldReady ? 'shown' : 'hidden'}
       >
-        <motion.div variants={TILE_ENTRANCE}>
+        <motion.div variants={TILE_ENTRANCE} onPointerEnter={(e) => e.pointerType === 'mouse' && playHover()}>
         <button
           onClick={handleCapture}
           disabled={isCapturing}
@@ -223,7 +223,7 @@ export default function HUDIcons() {
         </button>
         </motion.div>
 
-        <motion.div variants={TILE_ENTRANCE}>
+        <motion.div variants={TILE_ENTRANCE} onPointerEnter={(e) => e.pointerType === 'mouse' && playHover()}>
         <button
           onClick={toggleMap}
           aria-label="Open map"
@@ -234,7 +234,7 @@ export default function HUDIcons() {
         </button>
         </motion.div>
 
-        <motion.div variants={TILE_ENTRANCE}>
+        <motion.div variants={TILE_ENTRANCE} onPointerEnter={(e) => e.pointerType === 'mouse' && playHover()}>
         <button
           onClick={openContact}
           aria-label="Send letter / Contact Abdulrahman"
@@ -245,7 +245,7 @@ export default function HUDIcons() {
         </button>
         </motion.div>
 
-        <motion.div variants={TILE_ENTRANCE}>
+        <motion.div variants={TILE_ENTRANCE} onPointerEnter={(e) => e.pointerType === 'mouse' && playHover()}>
         <button
           onClick={() => {
             playClick()
@@ -259,7 +259,7 @@ export default function HUDIcons() {
         </button>
         </motion.div>
 
-        <motion.div variants={TILE_ENTRANCE}>
+        <motion.div variants={TILE_ENTRANCE} onPointerEnter={(e) => e.pointerType === 'mouse' && playHover()}>
         <button
           onClick={toggleMute}
           aria-label={muted ? 'Unmute' : 'Mute'}

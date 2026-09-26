@@ -7,6 +7,7 @@ interface DevWindow extends Window {
   __TELEPORT__: (x: number, z: number, lookX: number, lookZ: number) => void
   __THREE_SCENE__: Object3D
   __BODY__: { pitch: { x: number }; roll: { x: number }; squash: { x: number; v: number } }
+  __AMBIENCE__?: boolean
   __GREETING__: { t: number; active: boolean; done: boolean; weight: number }
   __WORLD_STORE__: { getState: () => { position: number[]; abdulrahmanPosition: number[]; introComplete: boolean; setIntroComplete: (v: boolean) => void } }
 }
@@ -190,6 +191,22 @@ test.describe('Visitor movement', () => {
       { timeout: 30000, polling: 20 }
     )
     await page.waitForFunction(() => Math.abs((window as unknown as DevWindow).__BODY__.squash.x) < 0.003, undefined, { timeout: 90000, polling: 50 })
+  })
+
+  test('the ambient sound bed starts once audio is allowed and the intro is over, with no audio errors', async ({ page }) => {
+    const errors: string[] = []
+    page.on('pageerror', (e) => errors.push(e.message))
+    await ready(page)
+    // browsers only run audio after a gesture
+    await page.mouse.click(400, 300)
+    await page.waitForFunction(() => (window as unknown as DevWindow).__AMBIENCE__ === true, undefined, { timeout: 30000 })
+    // and the sounds that fire during play do not throw
+    await page.keyboard.down('KeyW')
+    await page.waitForTimeout(2500)
+    await page.keyboard.up('KeyW')
+    await page.keyboard.press('KeyM')
+    await page.keyboard.press('Escape')
+    expect(errors, 'no uncaught errors from audio').toEqual([])
   })
 
   test('D strafes to the right of W and the model faces its travel direction', async ({ page }) => {
