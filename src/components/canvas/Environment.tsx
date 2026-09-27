@@ -48,8 +48,17 @@ const SPHERE_PROPS = mapToSphere(ALL_PROPS.map(p => ({
   rotation: p.rotation ?? [0, 0, 0] as [number, number, number],
 })))
 
+/**
+ * A VRM's root sits at hip height, not at the feet, so dropping an NPC's origin straight
+ * onto the surface buries it: measured, their feet sat 0.8 m underground and only 15 cm of
+ * head showed. The visitor avoids this because its model hangs under a physics capsule
+ * whose centre is a metre up. Lift NPCs by the same amount so they stand on the ground.
+ */
+const NPC_HIP_HEIGHT = 0.95
+
 const SPHERE_NPCS = mapToSphere(NPC_LOCATIONS.map(n => ({
   ...n,
+  position: [n.position[0], n.position[1] + NPC_HIP_HEIGHT, n.position[2]] as [number, number, number],
   rotation: n.rotation ?? [0, 0, 0] as [number, number, number],
 })))
 

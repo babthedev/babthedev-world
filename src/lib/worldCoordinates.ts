@@ -270,6 +270,66 @@ export const NPC_LOCATIONS: NPCLocation[] = [
     dialogueKey: '', // ambient — no dialogueKey means no interaction
     modelUrl: NPC_PLACEHOLDER_MODEL,
   },
+
+  // ── AMBIENT RESIDENTS ─────────────────────────────────
+  // Placeholders sharing the visitor's model until real characters arrive: one file,
+  // one download, a separate body each (see lib/vrmInstances). They give the Hub and
+  // the Exhibition some life instead of leaving them empty.
+  {
+    id: 'hub-loiterer',
+    name: '',
+    position: [4.4, 0, 4.4],
+    rotation: [0, -Math.PI * 0.75, 0], // looking back toward the Hub centre
+    seated: false,
+    ambient: true,
+    district: '/',
+    dialogueKey: '',
+    modelUrl: NPC_PLACEHOLDER_MODEL,
+  },
+  {
+    id: 'hub-bench-sitter',
+    name: '',
+    position: [-5.2, 0, 4.6],
+    rotation: [0, Math.PI * 0.35, 0],
+    seated: true,
+    ambient: true,
+    district: '/',
+    dialogueKey: '',
+    modelUrl: NPC_PLACEHOLDER_MODEL,
+  },
+  {
+    id: 'projects-visitor',
+    name: '',
+    position: [44.5, 0, 4.5],
+    rotation: [0, -Math.PI * 0.6, 0],
+    seated: false,
+    ambient: true,
+    district: '/projects',
+    dialogueKey: '',
+    modelUrl: NPC_PLACEHOLDER_MODEL,
+  },
+  {
+    id: 'projects-sketcher',
+    name: '',
+    position: [35.6, 0, -4.8],
+    rotation: [0, Math.PI * 0.25, 0],
+    seated: true,
+    ambient: true,
+    district: '/projects',
+    dialogueKey: '',
+    modelUrl: NPC_PLACEHOLDER_MODEL,
+  },
+  {
+    id: 'library-reader',
+    name: '',
+    position: [-4.6, 0, -44.4],
+    rotation: [0, Math.PI * 0.1, 0],
+    seated: true,
+    ambient: true,
+    district: '/essays',
+    dialogueKey: '',
+    modelUrl: NPC_PLACEHOLDER_MODEL,
+  },
 ]
 
 // ─── ROAD SEGMENTS ────────────────────────────────────────

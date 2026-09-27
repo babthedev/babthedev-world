@@ -1,3 +1,4 @@
+import { Material, Mesh, Texture } from 'three'
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js'
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js'
 import { VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm'
@@ -47,6 +48,62 @@ function buildLoader(): GLTFLoader {
   return loader
 }
 
+/**
+ * Texture slots a VRM material may carry. Every one of these is a full image in GPU
+ * memory, so they are the expensive part of a character by a wide margin.
+ */
+const TEXTURE_SLOTS = [
+  'map',
+  'normalMap',
+  'emissiveMap',
+  'alphaMap',
+  'aoMap',
+  'roughnessMap',
+  'metalnessMap',
+  'lightMap',
+] as const
+
+type TexturedMaterial = Material & Partial<Record<(typeof TEXTURE_SLOTS)[number], Texture | null>>
+
+/** One copy of each image per file, keyed by the name the file gives it. */
+const sharedTextures = new Map<string, Texture>()
+/** Every texture handed out above, so disposal never frees one another character is using. */
+const sharedTextureIds = new Set<string>()
+
+function eachMaterial(vrm: VRM, visit: (m: TexturedMaterial) => void) {
+  vrm.scene.traverse((o) => {
+    const mesh = o as Mesh
+    if (!mesh.material) return
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material]
+    for (const m of mats) visit(m as TexturedMaterial)
+  })
+}
+
+/**
+ * Parsing a file per character gives each its own textures, which is the whole cost of
+ * the approach: ten characters measured 650 MB of GPU images. The images are identical,
+ * so the first instance keeps them and every later one points at the same objects. The
+ * glTF names each image ("_01", "_02"), and those names are stable across parses, so the
+ * match is by name rather than by traversal order.
+ */
+function shareTextures(url: string, vrm: VRM): void {
+  eachMaterial(vrm, (m) => {
+    for (const slot of TEXTURE_SLOTS) {
+      const texture = m[slot]
+      if (!texture?.name) continue
+      const key = `${url}::${slot}::${texture.name}`
+      const already = sharedTextures.get(key)
+      if (!already) {
+        sharedTextures.set(key, texture)
+        sharedTextureIds.add(texture.uuid)
+      } else if (already !== texture) {
+        m[slot] = already
+        texture.dispose() // this instance's copy; nothing else has seen it
+      }
+    }
+  })
+}
+
 /** Builds a VRM of its own from the shared bytes. Dispose it with `disposeVrm` when done. */
 export async function createVrm(url: string): Promise<VRM> {
   const bytes = await modelBytes(url)
@@ -59,11 +116,26 @@ export async function createVrm(url: string): Promise<VRM> {
   VRMUtils.removeUnnecessaryVertices(vrm.scene)
   VRMUtils.removeUnnecessaryJoints(vrm.scene)
   if (vrm.meta?.metaVersion === '0') VRMUtils.rotateVRM0(vrm)
+  shareTextures(url, vrm)
 
   return vrm
 }
 
-/** Releases everything the instance owns: geometries, materials and its own textures. */
+/**
+ * Releases what this instance alone owns. Deliberately not VRMUtils.deepDispose: that
+ * frees every texture it finds, and these are shared, so one character leaving would
+ * blank the rest. (Material.dispose does not touch textures, so materials are safe.)
+ */
 export function disposeVrm(vrm: VRM): void {
-  VRMUtils.deepDispose(vrm.scene)
+  eachMaterial(vrm, (m) => {
+    for (const slot of TEXTURE_SLOTS) {
+      const texture = m[slot]
+      if (texture && !sharedTextureIds.has(texture.uuid)) texture.dispose()
+    }
+    m.dispose()
+  })
+  vrm.scene.traverse((o) => {
+    const mesh = o as Mesh
+    mesh.geometry?.dispose()
+  })
 }

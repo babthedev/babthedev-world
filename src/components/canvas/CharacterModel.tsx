@@ -144,10 +144,10 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
           if (m.side !== undefined) params.side = m.side
           if (m.depthWrite !== undefined) params.depthWrite = m.depthWrite
           next = new MeshToonMaterial(params)
-          // Free every texture the new material doesn't reuse
-          for (const value of Object.values(m)) {
-            if (value instanceof Texture && value !== m.map) value.dispose()
-          }
+          // The source material's textures are NOT disposed here: characters share one
+          // copy of each image across every instance of a model (see lib/vrmInstances),
+          // so freeing them would blank every other character using the same file.
+          // Unused MToon slots therefore linger, but only one copy of each exists.
           m.dispose?.()
         }
         converted.set(m, next)
