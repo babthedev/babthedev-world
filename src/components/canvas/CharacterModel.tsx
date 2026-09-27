@@ -1,13 +1,15 @@
 'use client'
 
 import { forwardRef, useEffect, useMemo, useRef, useState } from 'react'
-import { useGLTF, useAnimations } from '@react-three/drei'
+import { useAnimations } from '@react-three/drei'
 import { useFrame } from '@react-three/fiber'
-import { VRMLoaderPlugin, VRMUtils, type VRM } from '@pixiv/three-vrm'
+import { type VRM } from '@pixiv/three-vrm'
+import { createVrm, disposeVrm, preloadVrm } from '@/lib/vrmInstances'
 import { useVrmaPlayer } from '@/hooks/useVrmaPlayer'
 import { GREETING_TIMELINE, greeting, solveRightArm } from '@/lib/greeting'
 import type { AnimationState } from '@/hooks/useCharacterAnimations'
 import {
+  AnimationClip,
   Color,
   Euler,
   Group,
@@ -32,15 +34,8 @@ type LooseMaterial = Material & {
   outlineColorFactor?: { set?: (color: string) => void }
 }
 
-type ExtendLoader = NonNullable<Parameters<typeof useGLTF.preload>[3]>
-
-type LoaderPlugin = ReturnType<Parameters<Parameters<ExtendLoader>[0]['register']>[0]>
-
-// drei loads through three-stdlib while three-vrm is typed against three's own copy of
-// the GLTF loader types. They are the same runtime objects, so bridge the two.
-const registerVRM: ExtendLoader = (loader) => {
-  loader.register((parser) => new VRMLoaderPlugin(parser as unknown as ConstructorParameters<typeof VRMLoaderPlugin>[0]) as unknown as LoaderPlugin)
-}
+/** These models carry no embedded clips; poses come from VRMA files or the procedural rig. */
+const EMPTY_CLIPS: AnimationClip[] = []
 
 interface CharacterModelProps {
   url: string
@@ -85,7 +80,6 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
   ) => {
     const internalRef = useRef<Group | null>(null)
     const [vrm, setVrm] = useState<VRM | null>(null)
-    const isVRM = url.endsWith('.vrm')
 
     // Determine character identity
     const resolvedType = useMemo(() => {
@@ -96,33 +90,30 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
       return 'npc'
     }, [characterType, url])
 
-    const gltf = useGLTF(
-      url,
-      undefined,
-      undefined,
-      isVRM
-        ? registerVRM
-        : undefined
-    )
-
-    const scene = gltf.scene
-    const animations = gltf.animations
-    const { actions } = useAnimations(animations, scene)
-
-    // ── VRM INITIALIZATION ────────────────────────────
+    // Every character parses its own VRM from one shared download (see lib/vrmInstances):
+    // mounting the same parsed model twice means one of them renders nothing.
     useEffect(() => {
-      if (!isVRM || !gltf) return
-
-      const vrmPlugin = gltf.userData?.vrm || gltf.scene?.userData?.vrm
-      if (vrmPlugin) {
-        VRMUtils.removeUnnecessaryVertices(vrmPlugin.scene)
-        VRMUtils.removeUnnecessaryJoints(vrmPlugin.scene)
-        if (vrmPlugin.meta?.metaVersion === '0') {
-          VRMUtils.rotateVRM0(vrmPlugin)
-        }
-        setVrm(vrmPlugin)
+      let live = true
+      let mine: VRM | null = null
+      createVrm(url)
+        .then((made) => {
+          if (!live) {
+            disposeVrm(made)
+            return
+          }
+          mine = made
+          setVrm(made)
+        })
+        .catch((err) => console.error('[CharacterModel] could not build', url, err))
+      return () => {
+        live = false
+        setVrm(null)
+        if (mine) disposeVrm(mine)
       }
-    }, [gltf, isVRM])
+    }, [url])
+
+    const scene = vrm?.scene ?? null
+    const { actions } = useAnimations(EMPTY_CLIPS, scene ?? undefined)
 
     // ── MATERIAL CONVERSION ────────────────────────────
     // Each VRoid material (skin, eyes, hair, clothing…) becomes a toon
@@ -579,7 +570,7 @@ const CharacterModel = forwardRef<Group, CharacterModelProps>(
           ref.current = node
         }
       }}>
-        <primitive object={vrm ? vrm.scene : scene} />
+        {scene && <primitive object={scene} />}
       </group>
     )
   }
@@ -589,6 +580,6 @@ CharacterModel.displayName = 'CharacterModel'
 
 export default CharacterModel
 
-// Preload characters at module load time
-useGLTF.preload('/abdulrahman.vrm', undefined, undefined, registerVRM)
-useGLTF.preload('/visitor.vrm', undefined, undefined, registerVRM)
+// Start the downloads at module load, so the first character is not waiting on the network
+preloadVrm('/abdulrahman.vrm')
+preloadVrm('/visitor.vrm')

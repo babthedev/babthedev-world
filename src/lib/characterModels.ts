@@ -1,12 +1,10 @@
 /**
  * Which model file each character loads.
  *
- * IMPORTANT: one URL means one model in the scene. drei's useGLTF caches a parsed
- * GLTF per URL and the VRM scene is a single object graph, so every component that
- * mounts the same URL mounts the SAME object - the last one to mount takes it and
- * the others render nothing. Pointing the NPCs at the visitor's file made the
- * visitor itself disappear. Each character that must be on screen at the same time
- * therefore needs its own file until per-instance cloning exists.
+ * Several characters may share a URL: the file is downloaded once and each character
+ * parses its own VRM from those bytes (see lib/vrmInstances). Sharing a *parsed* model
+ * is what breaks — that once made the player character invisible — and the loader now
+ * makes that impossible.
  *
  * See docs/ASSET_SPEC.md §4 for adding real NPC models.
  */
@@ -14,5 +12,5 @@
 export const VISITOR_MODEL = '/visitor.vrm'
 export const GUIDE_MODEL = '/abdulrahman.vrm'
 
-/** Stand-in for NPCs. A copy of the visitor model, kept as its own file so it renders. */
-export const NPC_PLACEHOLDER_MODEL = '/joe.vrm'
+/** Stand-in for NPCs until each has a model of its own. Costs no extra download. */
+export const NPC_PLACEHOLDER_MODEL = VISITOR_MODEL

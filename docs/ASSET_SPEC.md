@@ -159,15 +159,14 @@ and fallback are already built and tested; see `docs/ANIMATIONS.md`.
 - **Format:** VRM 1.0 (VRoid Studio export is fine). Run `pnpm assets:vrm` on delivery; it
   slims them to roughly 3 MB each without changing anything the runtime needs.
 - **Three distinct NPCs** are needed: Joe (café), the library sleeper, the newspaper reader.
-  Today all three share the visitor’s model, set by `NPC_PLACEHOLDER_MODEL` in
-  `src/lib/characterModels.ts`. (`joe.vrm` is a copy of `visitor.vrm`. It looks wasteful, and it is, but it has to
-  stay a separate file: one URL means one model on screen, because a parsed GLTF is cached
-  per URL and a VRM scene is a single object graph. Two characters sharing a file means one
-  of them renders nothing. Only the second and third NPC are currently invisible for this
-  reason — giving them their own files, or real models, fixes that.)
-  **To add a real one:** drop the file in `public/` and set that NPC’s `modelUrl` in
+  Today all three share the visitor's model, set by `NPC_PLACEHOLDER_MODEL` in
+  `src/lib/characterModels.ts`. Sharing a *file* costs nothing: it is downloaded once and
+  each character parses its own VRM from those bytes (`src/lib/vrmInstances.ts`), so any
+  number of characters can share one model with no extra download.
+  **To add a real one:** drop the file in `public/` and set that NPC's `modelUrl` in
   `src/lib/worldCoordinates.ts` (or change the constant to move all three at once).
-  The character budget is 12 MB and is currently 5.4 MB (2 files), so there is room for three more.
+  The character budget is 12 MB and is currently 5.4 MB (2 files), so there is room for more.
+
 - **Fewer materials per character is a direct performance win.** Each material becomes a
   separate draw, and each is drawn three times per frame. The current models have about 15
   submeshes each; **6 or fewer** would cut character cost by more than half. In VRoid,
